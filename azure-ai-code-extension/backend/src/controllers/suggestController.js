@@ -10,14 +10,14 @@ const responseProcessor = require('../services/responseProcessor');
  * Azure SDK code suggestion.
  *
  * Request body:
- *   { language, imports[], currentLine, context }
+ *   { language, imports[], currentLine, context, cursorPosition? }
  *
  * Response:
  *   { suggestion: string }
  */
 exports.handleSuggest = async (req, res, next) => {
     try {
-        const { language, imports, currentLine, context } = req.body;
+        const { language, imports, currentLine, context, cursorPosition } = req.body;
 
         // ── Validate required fields ───────────────────────
         if (!language || !currentLine) {
@@ -29,13 +29,21 @@ exports.handleSuggest = async (req, res, next) => {
         const startTime = Date.now();
 
         // Step 1 — Analyze the code context
-        const analysis = contextAnalyzer.analyze({ language, imports, currentLine, context });
+        const analysis = contextAnalyzer.analyze({ 
+            language, 
+            imports, 
+            currentLine, 
+            context, 
+            cursorPosition 
+        });
 
         const userCode = [context, currentLine].filter(Boolean).join('\n');
         const userQuery = `${analysis.sdkType} ${analysis.intent} ${currentLine}`.trim();
 
         // Step 2 — Retrieve relevant documentation via vector search
-        const docs = await ragService.retrieveRelevantDocs(userQuery);
+        const docs = await ragService.retrieveRelevantDocs(userQuery, { 
+            sdkType: analysis.sdkType 
+        });
 
         // Step 3 — Build prompt for the LLM
         const prompt = promptBuilder.buildPrompt({
