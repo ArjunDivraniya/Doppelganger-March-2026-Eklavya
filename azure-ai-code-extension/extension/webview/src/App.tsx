@@ -12,28 +12,22 @@ function App() {
   const [suggestions, setSuggestions] = useState<Suggestion[] | null>(null);
 
   useEffect(() => {
-    setTimeout(() => {
-      setSuggestions([
-        {
-          sdk: "@azure/storage-blob",
-          language: "TypeScript",
-          line: 3,
-          code: "BlobServiceClient.fromConnectionString(connectionString)",
-        },
-        {
-          sdk: "@azure/storage-blob",
-          language: "TypeScript",
-          line: 8,
-          code: 'blobServiceClient.getContainerClient("images")',
-        },
-        {
-          sdk: "@azure/storage-blob",
-          language: "TypeScript",
-          line: 15,
-          code: 'await containerClient.uploadBlockBlob("file.jpg", data, data.length)',
-        },
-      ]);
-    }, 2800);
+    const handleMessage = (event: MessageEvent) => {
+      const message = event.data;
+      if (message.type === "suggestion") {
+        setSuggestions([
+          {
+            sdk: message.service,
+            language: "TypeScript",
+            line: 0,
+            code: message.suggestion,
+          },
+        ]);
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
   }, []);
 
   return (

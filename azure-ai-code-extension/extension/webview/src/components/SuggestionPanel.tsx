@@ -12,12 +12,25 @@ function SuggestionPanel({ suggestions }: SuggestionPanelProps) {
   const [insertedIndexes, setInsertedIndexes] = useState<number[]>([]);
 
   const handleInsert = (index: number) => {
-    navigator.clipboard.writeText(suggestions[index].code);
+    const code = suggestions[index].code;
+
+    // Copy to clipboard (fallback/convenience)
+    navigator.clipboard.writeText(code);
+
+    // Notify Extension to actually insert the snippet
+    window.parent.postMessage({
+      type: "accept",
+      suggestion: code
+    }, "*");
+
     setInsertedIndexes((prev) => [...prev, index]);
   };
 
   const handleIgnore = (index: number) => {
     setIgnoredIndexes((prev) => [...prev, index]);
+
+    // Optional: Notify extension that suggestion was rejected
+    window.parent.postMessage({ type: "reject" }, "*");
   };
 
   const visible = suggestions.filter((_, i) => !ignoredIndexes.includes(i));
