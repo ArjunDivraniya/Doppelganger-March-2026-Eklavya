@@ -44,12 +44,16 @@ export class InlineSuggestionProvider implements vscode.InlineCompletionItemProv
         try {
             const suggestion = await fetchSuggestion(codeContext, this.backendUrl);
 
+            console.log(`[InlineProvider] 💡 Fetched: ${suggestion ? "YES" : "NO"}`);
+
             if (!suggestion || token.isCancellationRequested) return undefined;
 
             // 5. Create Inline Completion Item
+            // We replace the current prefix/line for a "Copilot" feel
+            const range = new vscode.Range(position.line, 0, position.line, position.character);
             const item = new vscode.InlineCompletionItem(
                 suggestion,
-                new vscode.Range(position, position)
+                range
             );
 
             // Optional: Provide a command to log "acceptance"

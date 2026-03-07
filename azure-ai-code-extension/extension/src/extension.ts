@@ -1,6 +1,7 @@
 // ENTRY POINT — extension.ts
 
 import * as vscode from "vscode";
+console.log("[AzureAI] extension.ts script loading...");
 import { CodeWatcher } from "./codeWatcher";
 import { InlineSuggestionProvider } from "./inlineProvider";
 
@@ -9,6 +10,7 @@ const BACKEND_URL = process.env.BACKEND_URL ?? "https://demo-backend.azurewebsit
 let webviewPanel: vscode.WebviewPanel | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
+    vscode.window.showInformationMessage("⚡ AzureAI Suggestion Engine — Active (Copilot Mode)");
     console.log("⚡ AzureAI Code Suggest — activated");
 
     // 1. Create status bar item
@@ -21,11 +23,14 @@ export function activate(context: vscode.ExtensionContext) {
 
     // 2. Register Inline Completion Provider (Copilot Style)
     const inlineProvider = new InlineSuggestionProvider(BACKEND_URL);
-    const inlineRegistration = vscode.languages.registerInlineCompletionItemProvider(
-        { pattern: "**" }, // All files, or filter by SUPPORTED_LANGUAGES
-        inlineProvider
+    const supportedLanguages = ["typescript", "javascript", "typescriptreact", "javascriptreact", "csharp"];
+
+    context.subscriptions.push(
+        vscode.languages.registerInlineCompletionItemProvider(
+            supportedLanguages.map(lang => ({ language: lang })),
+            inlineProvider
+        )
     );
-    context.subscriptions.push(inlineRegistration);
 
     // 3. Create watcher with callback to send suggestions to webview (Dashboard Mode)
     const watcher = new CodeWatcher(

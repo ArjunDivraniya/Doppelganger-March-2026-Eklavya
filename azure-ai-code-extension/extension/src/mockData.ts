@@ -1,12 +1,14 @@
 // MOCK DATA — Temporary backend replacement (swap out when API is ready)
 
 export const MOCK_SUGGESTIONS: Record<string, string> = {
-    "blob-storage:BlobServiceClient": `const blobServiceClient = new BlobServiceClient(
+    "blob-storage:BlobServiceClient": `// [AzureAI Suggest]
+const blobServiceClient = new BlobServiceClient(
   \`https://\${accountName}.blob.core.windows.net\`,
   new DefaultAzureCredential()
 );`,
 
-    "blob-storage:upload": `const containerClient = blobServiceClient.getContainerClient(containerName);
+    "blob-storage:upload": `// [AzureAI Suggest]
+const containerClient = blobServiceClient.getContainerClient(containerName);
 const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 const uploadBlobResponse = await blockBlobClient.upload(content, content.length);
 console.log("Upload block blob success:", uploadBlobResponse.requestId);`,

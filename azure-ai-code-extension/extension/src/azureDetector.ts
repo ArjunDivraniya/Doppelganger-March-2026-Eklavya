@@ -22,22 +22,19 @@ export const AZURE_SDK_MAP: Record<string, string> = {
     "Microsoft.Azure.EventHubs": "event-hubs"
 };
 
-const AZURE_KEYWORDS = /azure|blobclient|cosmosclient|keyvault|storageaccount|serviceBus|eventhub|DefaultAzureCredential|BlobServiceClient|CosmosClient|SecretClient/i;
+const AZURE_KEYWORDS = /azure|blob|cosmos|keyvault|secret|storage|servicebus|eventhub|credential/i;
 
 const AZURE_FILE_NAME = /azure[-.]|\.azure\.|azure-config|azureservice/;
 
 const KEYWORD_SERVICE_MAP: Record<string, string> = {
-    "BlobServiceClient": "blob-storage",
-    "blobclient": "blob-storage",
-    "storageaccount": "blob-storage",
-    "CosmosClient": "cosmos-db",
-    "cosmosclient": "cosmos-db",
-    "SecretClient": "key-vault",
+    "blob": "blob-storage",
+    "cosmos": "cosmos-db",
+    "secret": "key-vault",
     "keyvault": "key-vault",
-    "DefaultAzureCredential": "azure-identity",
-    "serviceBus": "service-bus",
+    "credential": "azure-identity",
+    "servicebus": "service-bus",
     "eventhub": "event-hubs",
-    "TextAnalyticsClient": "cognitive-services"
+    "textanalytics": "cognitive-services"
 };
 
 export interface DetectionResult {
