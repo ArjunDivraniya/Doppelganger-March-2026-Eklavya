@@ -1,27 +1,17 @@
 const fs = require('fs').promises;
 const path = require('path');
-const OpenAI = require('openai');
 
 const { ChromaClient } = require('chromadb');
 require('dotenv').config({ path: path.resolve(__dirname, '..', '.env'), override: true });
+const { createEmbedding: createTextEmbedding, getProvider } = require('../src/services/embeddingService');
 
 const ROOT_DIR = path.resolve(__dirname, '..');
 const CHUNKS_FILE = path.join(ROOT_DIR, 'dataset', 'chunks.json');
 const COLLECTION_NAME = 'azure_docs';
-const EMBEDDING_MODEL = 'text-embedding-3-small';
 const BATCH_SIZE = 50;
 
 function isQuotaError(error) {
   return error?.status === 429 || /quota|rate limit|429/i.test(error?.message || '');
-}
-
-function createOpenAIClient() {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new Error('OPENAI_API_KEY is missing.');
-  }
-
-  return new OpenAI({ apiKey });
 }
 
 function createChromaClient() {
@@ -72,18 +62,8 @@ async function getIndexedIds(collection) {
   }
 }
 
-async function createEmbedding(openai, text) {
-  const response = await openai.embeddings.create({
-    model: EMBEDDING_MODEL,
-    input: text,
-  });
-
-  const vector = response?.data?.[0]?.embedding;
-  if (!vector) {
-    throw new Error('Embedding API returned no vector.');
-  }
-
-  return vector;
+async function createChunkEmbedding(text) {
+  return createTextEmbedding(text);
 }
 
 function toBatches(items, size) {
@@ -94,7 +74,7 @@ function toBatches(items, size) {
   return batches;
 }
 
-async function indexBatch({ batch, openai, collection, indexedIds }) {
+async function indexBatch({ batch, collection, indexedIds }) {
   const ids = [];
   const documents = [];
   const metadatas = [];
@@ -110,7 +90,7 @@ async function indexBatch({ batch, openai, collection, indexedIds }) {
     }
 
     try {
-      const embedding = await createEmbedding(openai, chunk.text);
+      const embedding = await createChunkEmbedding(chunk.text);
 
       ids.push(chunk.id);
       documents.push(chunk.text);
@@ -150,11 +130,11 @@ async function indexBatch({ batch, openai, collection, indexedIds }) {
 
 async function embedChunks() {
   console.log('[start] Embedding ingestion started');
+  console.log(`[info] Embedding provider: ${getProvider()}`);
 
   const chunks = await loadChunks();
   console.log(`[info] Loaded chunks: ${chunks.length}`);
 
-  const openai = createOpenAIClient();
   const chroma = createChromaClient();
   const collection = await getOrCreateCollection(chroma);
   const indexedIds = await getIndexedIds(collection);
@@ -166,7 +146,7 @@ async function embedChunks() {
 
   for (let i = 0; i < batches.length; i += 1) {
     const batch = batches[i];
-    const { inserted } = await indexBatch({ batch, openai, collection, indexedIds });
+    const { inserted } = await indexBatch({ batch, collection, indexedIds });
     totalInserted += inserted;
 
     console.log(`[batch ${i + 1}/${batches.length}] Inserted ${inserted} vectors`);
