@@ -11,6 +11,10 @@ const COLLECTION_NAME = 'azure_docs';
 const EMBEDDING_MODEL = 'text-embedding-3-small';
 const BATCH_SIZE = 50;
 
+function isQuotaError(error) {
+  return error?.status === 429 || /quota|rate limit|429/i.test(error?.message || '');
+}
+
 function createOpenAIClient() {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
@@ -116,6 +120,12 @@ async function indexBatch({ batch, openai, collection, indexedIds }) {
       });
       embeddings.push(embedding);
     } catch (error) {
+      if (isQuotaError(error)) {
+        throw new Error(
+          'OpenAI quota exceeded (429). Add billing/credits or use a key with available quota, then rerun embed:chunks.'
+        );
+      }
+
       console.error(`[error] Failed embedding for chunk ${chunk.id}: ${error.message}`);
     }
   }
