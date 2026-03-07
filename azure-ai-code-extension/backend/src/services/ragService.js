@@ -1,22 +1,23 @@
-const OpenAI = require('openai');
 const { ChromaClient } = require('chromadb');
+const { createEmbedding: createTextEmbedding, getProvider } = require('./embeddingService');
 
 const COLLECTION_NAME = 'azure_docs';
-const EMBEDDING_MODEL = 'text-embedding-3-small';
 const DEFAULT_RESULT_COUNT = 3;
 
-function createOpenAIClient() {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-        throw new Error('OPENAI_API_KEY is missing.');
-    }
-
-    return new OpenAI({ apiKey });
-}
-
 function createChromaClient() {
-    const chromaPath = process.env.CHROMA_DB_PATH || 'http://localhost:8000';
-    return new ChromaClient({ path: chromaPath });
+    const configured = (process.env.CHROMA_DB_PATH || '').trim();
+    const fallbackUrl = 'http://localhost:8000';
+    const chromaUrl = /^https?:\/\//i.test(configured) ? configured : fallbackUrl;
+
+    const parsed = new URL(chromaUrl);
+    const ssl = parsed.protocol === 'https:';
+    const port = parsed.port ? Number(parsed.port) : ssl ? 443 : 8000;
+
+    return new ChromaClient({
+        host: parsed.hostname,
+        port,
+        ssl,
+    });
 }
 
 async function getCollection(chromaClient) {
@@ -24,18 +25,7 @@ async function getCollection(chromaClient) {
 }
 
 async function generateEmbedding(text) {
-    const openai = createOpenAIClient();
-    const response = await openai.embeddings.create({
-        model: EMBEDDING_MODEL,
-        input: text,
-    });
-
-    const vector = response?.data?.[0]?.embedding;
-    if (!vector) {
-        throw new Error('Failed to generate query embedding.');
-    }
-
-    return vector;
+    return createTextEmbedding(text);
 }
 
 async function retrieveRelevantDocs(query, maxResults = DEFAULT_RESULT_COUNT) {
@@ -44,6 +34,10 @@ async function retrieveRelevantDocs(query, maxResults = DEFAULT_RESULT_COUNT) {
     }
 
     try {
+        if (getProvider() !== 'openai') {
+            console.log(`[RAG] Using ${getProvider()} embeddings provider`);
+        }
+
         const embedding = await generateEmbedding(query);
         const chroma = createChromaClient();
         const collection = await getCollection(chroma);
