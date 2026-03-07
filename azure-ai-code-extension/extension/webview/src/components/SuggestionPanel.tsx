@@ -1,14 +1,20 @@
 interface SuggestionPanelProps {
-  suggestion: string;
+  suggestions: string[];
 }
 
-function SuggestionPanel({ suggestion }: SuggestionPanelProps) {
+function SuggestionPanel({ suggestions }: SuggestionPanelProps) {
   return (
     <div className="suggestion-panel">
-      <h2>Suggestion</h2>
-      <pre>
-        <code>{suggestion}</code>
-      </pre>
+      <h2>Suggestions</h2>
+      <ul>
+        {suggestions.map((suggestion, index) => (
+          <li key={index}>
+            <pre>
+              <code>{suggestion}</code>
+            </pre>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
