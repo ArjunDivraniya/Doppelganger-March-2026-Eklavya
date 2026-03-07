@@ -1,4 +1,5 @@
 import "./App.css";
+import SuggestionPanel from "./components/SuggestionPanel";
 
 function App() {
   const suggestion =
@@ -8,19 +9,9 @@ function App() {
     <div className="container">
       <h1>Azure AI Suggestions</h1>
 
-      <div className="suggestion-card">
-        <h3>Suggested Code</h3>
-
-        <pre className="code-block">{suggestion}</pre>
-
-        <div className="buttons">
-          <button className="insert-btn">Insert Code</button>
-          <button className="ignore-btn">Ignore</button>
-        </div>
-      </div>
+      <SuggestionPanel suggestion={suggestion} />
     </div>
   );
 }
-//
 
 export default App;
