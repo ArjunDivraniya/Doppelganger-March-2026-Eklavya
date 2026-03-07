@@ -7,7 +7,8 @@
         "start": "node src/server.js",
         "dev": "nodemon src/server.js",
         "embed:chunks": "node scripts/embedChunks.js",
-        "test:rag": "node scripts/testRagPipeline.js"
+        "test:rag": "node scripts/testRagPipeline.js",
+        "test:filtering": "node scripts/testSdkFiltering.js"
     },
     "dependencies": {
         "axios": "^1.6.0",
