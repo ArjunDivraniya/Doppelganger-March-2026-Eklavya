@@ -3,13 +3,15 @@ import "./App.css";
 import SuggestionPanel from "./components/SuggestionPanel";
 
 function App() {
-  const [suggestion, setSuggestion] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<string[] | null>(null);
 
   useEffect(() => {
     setTimeout(() => {
-      setSuggestion(
-        "BlobServiceClient.fromConnectionString(connectionString)"
-      );
+      setSuggestions([
+        "BlobServiceClient.fromConnectionString(connectionString)",
+        'blobServiceClient.getContainerClient("images")',
+        'containerClient.uploadBlockBlob("file.jpg", data)'
+      ]);
     }, 2000);
   }, []);
 
@@ -17,8 +19,8 @@ function App() {
     <div className="container">
       <h1>Azure AI Suggestions</h1>
 
-      {suggestion ? (
-        <SuggestionPanel suggestion={suggestion} />
+      {suggestions ? (
+        <SuggestionPanel suggestions={suggestions} />
       ) : (
         <p>Generating Azure suggestion...</p>
       )}
