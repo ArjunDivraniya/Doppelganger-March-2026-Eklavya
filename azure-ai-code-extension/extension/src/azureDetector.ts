@@ -26,6 +26,20 @@ const AZURE_KEYWORDS = /azure|blobclient|cosmosclient|keyvault|storageaccount|se
 
 const AZURE_FILE_NAME = /azure[-.]|\.azure\.|azure-config|azureservice/;
 
+const KEYWORD_SERVICE_MAP: Record<string, string> = {
+    "BlobServiceClient": "blob-storage",
+    "blobclient": "blob-storage",
+    "storageaccount": "blob-storage",
+    "CosmosClient": "cosmos-db",
+    "cosmosclient": "cosmos-db",
+    "SecretClient": "key-vault",
+    "keyvault": "key-vault",
+    "DefaultAzureCredential": "azure-identity",
+    "serviceBus": "service-bus",
+    "eventhub": "event-hubs",
+    "TextAnalyticsClient": "cognitive-services"
+};
+
 export interface DetectionResult {
     isAzure: boolean;
     detectedServices: string[];
@@ -62,6 +76,19 @@ export function detectAzure(
 
     // f) isAzure
     const isAzure = detectedServices.length > 0 || keywordMatch || fileMatch;
+
+    // If isAzure is true but no services detected via imports, try mapping from keywords
+    if (isAzure && detectedServices.length === 0) {
+        for (const [kw, service] of Object.entries(KEYWORD_SERVICE_MAP)) {
+            if (currentLine.toLowerCase().includes(kw.toLowerCase())) {
+                detectedServices.push(service);
+            }
+        }
+        // Fallback to "azure" if still empty
+        if (detectedServices.length === 0) {
+            detectedServices.push("azure-identity"); // Default fallback
+        }
+    }
 
     // g) Return result
     return {

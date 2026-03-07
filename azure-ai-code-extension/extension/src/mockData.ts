@@ -46,6 +46,20 @@ await producer.close();`,
     "cognitive-services:TextAnalyticsClient": `const client = new TextAnalyticsClient(endpoint, new AzureKeyCredential(apiKey));
 const sentimentResult = await client.analyzeSentiment(["I love Azure!"]);
 sentimentResult.forEach(doc => console.log("Sentiment:", doc.sentiment));`,
+
+    // Default fallbacks (service-only keys)
+    "blob-storage": `// Default Blob Storage setup
+const blobServiceClient = new BlobServiceClient(endpoint, new DefaultAzureCredential());`,
+    "cosmos-db": `// Default Cosmos DB setup
+const client = new CosmosClient({ endpoint, key });`,
+    "key-vault": `// Default Key Vault setup
+const client = new SecretClient(vaultUrl, new DefaultAzureCredential());`,
+    "azure-identity": `// Default Azure Identity
+const credential = new DefaultAzureCredential();`,
+    "service-bus": `// Default Service Bus
+const sbClient = new ServiceBusClient(connectionString);`,
+    "event-hubs": `// Default Event Hubs
+const producer = new EventHubProducerClient(connectionString, eventHubName);`,
 };
 
 export function getMockSuggestion(

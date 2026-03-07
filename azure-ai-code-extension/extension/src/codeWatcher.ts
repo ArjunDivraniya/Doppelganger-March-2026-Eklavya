@@ -12,12 +12,12 @@ export class CodeWatcher {
     private lastSentKey: string = "";
     private backendUrl: string;
     private statusBar: vscode.StatusBarItem;
-    private onSuggestion: (suggestion: string, service: string) => void;
+    private onSuggestion: (suggestion: string, service: string, isManual: boolean) => void;
 
     constructor(
         backendUrl: string,
         statusBar: vscode.StatusBarItem,
-        onSuggestion: (suggestion: string, service: string) => void
+        onSuggestion: (suggestion: string, service: string, isManual: boolean) => void
     ) {
         this.backendUrl = backendUrl;
         this.statusBar = statusBar;
@@ -39,13 +39,13 @@ export class CodeWatcher {
         if (!SUPPORTED_LANGUAGES.includes(event.document.languageId)) return;
 
         const change = event.contentChanges[0];
-        if (!change || change.text.length < 2) return;
+        if (!change || change.text.length < 1) return;
 
         // Debounce
         if (this.debounceTimer) {
             clearTimeout(this.debounceTimer);
         }
-        this.debounceTimer = setTimeout(() => this.processChange(event.document, editor), 500);
+        this.debounceTimer = setTimeout(() => this.processChange(event.document, editor), 300);
     }
 
     private async processChange(doc: vscode.TextDocument, editor: vscode.TextEditor): Promise<void> {
@@ -77,7 +77,7 @@ export class CodeWatcher {
         // k) Result handling
         if (suggestion) {
             this.statusBar.text = "$(azure) AzureAI: ✓ Ready";
-            this.onSuggestion(suggestion, detection.detectedServices[0] ?? "azure");
+            this.onSuggestion(suggestion, detection.detectedServices[0] ?? "azure", false);
         } else {
             // l) Fallback
             this.statusBar.text = "$(azure) AzureAI: Ready";
@@ -106,7 +106,7 @@ export class CodeWatcher {
 
         if (suggestion) {
             this.statusBar.text = "$(azure) AzureAI: ✓ Ready";
-            this.onSuggestion(suggestion, detection.detectedServices[0] ?? "azure");
+            this.onSuggestion(suggestion, detection.detectedServices[0] ?? "azure", true);
         } else {
             this.statusBar.text = "$(azure) AzureAI: Ready";
             vscode.window.showWarningMessage("AzureAI: No suggestion found.");
