@@ -1,42 +1,99 @@
-.container {
-  font-family: Arial, sans-serif;
-  padding: 20px;
+/* ─── Neon Grid ─── */
+@keyframes grid-scroll {
+  0%   { background-position: 0 0; }
+  100% { background-position: 60px 60px; }
+}
+.animated-grid {
+  background-image:
+    linear-gradient(rgba(59,130,246,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59,130,246,0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
+  animation: grid-scroll 20s linear infinite;
 }
 
-.suggestion-card {
-  background: #1e1e1e;
-  color: white;
-  padding: 16px;
-  border-radius: 8px;
+/* ─── Floating orbs ─── */
+@keyframes float-slow {
+  0%, 100% { transform: translate(0,0) scale(1); }
+  25%      { transform: translate(30px,-20px) scale(1.05); }
+  50%      { transform: translate(-10px,-40px) scale(0.97); }
+  75%      { transform: translate(-25px,15px) scale(1.03); }
 }
 
-.code-block {
-  background: #111;
-  padding: 10px;
-  border-radius: 4px;
+/* ─── Spinner ─── */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 0.9s linear infinite; }
+
+/* ─── Pulse ring ─── */
+@keyframes pulse-ring {
+  0%   { transform: scale(0.85); opacity: 0.7; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+.pulse-ring { animation: pulse-ring 2s ease-out infinite; }
+
+/* ─── Fade in up ─── */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fade-in-up 0.5s cubic-bezier(0.16,1,0.3,1) both; }
+
+/* ─── Shimmer sweep ─── */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.03) 50%, transparent 75%);
+  background-size: 200% 100%;
+  animation: shimmer 3s ease-in-out infinite;
 }
 
-.buttons {
-  margin-top: 10px;
+/* ─── Border glow breathe ─── */
+@keyframes glow-breathe {
+  0%, 100% { opacity: 0.3; }
+  50%      { opacity: 1; }
+}
+.border-glow { animation: glow-breathe 4s ease-in-out infinite; }
+
+/* ─── Dot loading ─── */
+@keyframes dot-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.3; }
+  40%           { transform: translateY(-6px); opacity: 1; }
+}
+.dot-1 { animation: dot-bounce 1.4s ease-in-out 0s infinite; }
+.dot-2 { animation: dot-bounce 1.4s ease-in-out 0.15s infinite; }
+.dot-3 { animation: dot-bounce 1.4s ease-in-out 0.3s infinite; }
+
+/* ─── Status pulse ─── */
+@keyframes status-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.4); }
+  50%      { box-shadow: 0 0 0 4px rgba(34,197,94,0); }
+}
+.status-pulse { animation: status-pulse 2s ease-in-out infinite; }
+
+/* ─── Gradient text ─── */
+.gradient-text {
+  background: linear-gradient(135deg, #e5e7eb 0%, #3b82f6 50%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-.insert-btn {
-  margin-right: 10px;
-  padding: 6px 12px;
-  background: #007acc;
-  border: none;
-  color: white;
-  cursor: pointer;
+/* ─── Glass card ─── */
+.glass-card {
+  background: linear-gradient(145deg, rgba(15,23,42,0.8) 0%, rgba(11,15,25,0.95) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow:
+    0 4px 24px rgba(0,0,0,0.4),
+    inset 0 1px 0 rgba(255,255,255,0.04);
 }
 
-.ignore-btn {
-  padding: 6px 12px;
-  background: #444;
-  border: none;
-  color: white;
-  cursor: pointer;
-}
-
-.selected {
-  border: 2px solid #007acc;
+.glass-card:hover {
+  border-color: rgba(59,130,246,0.2);
+  box-shadow:
+    0 8px 40px rgba(0,0,0,0.5),
+    0 0 0 1px rgba(59,130,246,0.1),
+    inset 0 1px 0 rgba(255,255,255,0.06);
 }

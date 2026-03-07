@@ -1,68 +1,65 @@
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+@import "tailwindcss";
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+@theme {
+  /* ─── Base palette (Linear / Raycast inspired) ─── */
+  --color-bg-base:       #0b0f19;
+  --color-bg-panel:      #111827;
+  --color-bg-card:       #0f172a;
+  --color-bg-elevated:   #1e293b;
+  --color-border:        rgba(255,255,255,0.06);
+  --color-border-strong: rgba(255,255,255,0.12);
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
+  /* Accent */
+  --color-accent:        #3b82f6;
+  --color-accent-hover:  #2563eb;
+  --color-accent-glow:   rgba(59,130,246,0.25);
+  --color-accent-green:  #22c55e;
+  --color-accent-purple: #a78bfa;
+  --color-accent-amber:  #f59e0b;
+
+  /* Text */
+  --color-text-primary:   #e5e7eb;
+  --color-text-secondary: #9ca3af;
+  --color-text-muted:     #4b5563;
+
+  /* Code syntax */
+  --color-code-string:  #a5d6ff;
+  --color-code-fn:      #c4b5fd;
+  --color-code-keyword: #f472b6;
+  --color-code-number:  #7dd3fc;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  background-color: #0b0f19;
+  color: #e5e7eb;
+  min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+code, pre, .font-mono {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace !important;
 }
 
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
+#root {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
-}
+/* Slim scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.14); }
+::-webkit-scrollbar-thumb { background: #424242; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #555; }
