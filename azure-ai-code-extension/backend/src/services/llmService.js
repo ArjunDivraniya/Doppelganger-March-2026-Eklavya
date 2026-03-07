@@ -60,10 +60,36 @@ exports.generateCompletion = async (messages) => {
     }
 };
 
+/**
+ * Generate a completion from a single prompt string.
+ * @param {string} prompt
+ * @returns {Promise<string>}
+ */
+exports.generate = async (prompt) => {
+    const messages = [
+        {
+            role: 'user',
+            content: prompt,
+        },
+    ];
+
+    return exports.generateCompletion(messages);
+};
+
 // ── Mock suggestions for development/testing ───────────
 
 function getMockSuggestion(messages) {
     const userMsg = messages.find((m) => m.role === 'user')?.content || '';
+    const normalized = userMsg.toLowerCase();
+
+    if (normalized.includes('upload a file to azure blob') && normalized.includes('defaultazurecredential')) {
+        return `const credential = new DefaultAzureCredential();
+const blobServiceClient = new BlobServiceClient(\`https://${'${process.env.AZURE_STORAGE_ACCOUNT_NAME}'}.blob.core.windows.net\`, credential);
+const containerClient = blobServiceClient.getContainerClient(containerName);
+await containerClient.createIfNotExists();
+const blockBlobClient = containerClient.getBlockBlobClient(fileName);
+await blockBlobClient.uploadData(fileBuffer);`;
+    }
 
     if (userMsg.includes('BlobServiceClient') || userMsg.includes('blob-storage')) {
         return 'BlobServiceClient.fromConnectionString(process.env.AZURE_STORAGE_CONNECTION_STRING)';
