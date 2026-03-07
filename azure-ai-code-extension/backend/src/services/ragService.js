@@ -1,55 +1,65 @@
-/**
- * RAG Service (Stub)
- *
- * This module is a placeholder for the Retrieval-Augmented Generation pipeline.
- * Another backend developer will implement the actual vector search / document
- * retrieval logic here.
- *
- * TODO: Replace the stub with real RAG retrieval (e.g. Pinecone, Weaviate,
- *       Azure AI Search, or a local FAISS index).
- */
+const OpenAI = require('openai');
+const { ChromaClient } = require('chromadb');
 
-// Placeholder documentation snippets keyed by SDK type
-const STUB_DOCS = {
-    'blob-storage': `
-Azure Blob Storage SDK – Quick Reference:
-• BlobServiceClient.fromConnectionString(connStr) – create a client
-• blobServiceClient.getContainerClient(name) – get a container ref
-• containerClient.uploadBlockBlob(blobName, data, length) – upload a blob
-• containerClient.listBlobsFlat() – list blobs in a container
-• blockBlobClient.downloadToBuffer() – download blob content
-    `.trim(),
+const COLLECTION_NAME = 'azure_docs';
+const EMBEDDING_MODEL = 'text-embedding-3-small';
+const DEFAULT_RESULT_COUNT = 3;
 
-    'cosmos-db': `
-Azure Cosmos DB SDK – Quick Reference:
-• new CosmosClient({ endpoint, key }) – create a client
-• client.database(dbId).container(containerId) – get a container ref
-• container.items.create(item) – insert a document
-• container.items.query(querySpec).fetchAll() – query documents
-• container.item(id, partitionKey).read() – read a single document
-    `.trim(),
+function createOpenAIClient() {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+        throw new Error('OPENAI_API_KEY is missing.');
+    }
 
-    'identity': `
-Azure Identity SDK – Quick Reference:
-• new DefaultAzureCredential() – automatic credential chain
-• new ClientSecretCredential(tenantId, clientId, clientSecret) – service principal
-• new ManagedIdentityCredential() – for Azure-hosted apps
-    `.trim(),
-};
+    return new OpenAI({ apiKey });
+}
 
-/**
- * Retrieve relevant Azure SDK documentation based on the detected SDK and intent.
- * @param {string} sdkType — e.g. 'blob-storage', 'cosmos-db'
- * @param {string} intent — e.g. 'create-client', 'upload', 'query'
- * @returns {Promise<string>} — relevant documentation text
- */
-exports.retrieveDocumentation = async (sdkType, intent) => {
-    // TODO: Replace with actual RAG retrieval logic
-    //   1. Convert sdkType + intent into a query embedding
-    //   2. Search vector store for relevant documentation chunks
-    //   3. Return the top-k results concatenated
+function createChromaClient() {
+    const chromaPath = process.env.CHROMA_DB_PATH || 'http://localhost:8000';
+    return new ChromaClient({ path: chromaPath });
+}
 
-    console.log(`[RAG-STUB] Retrieving docs for SDK: ${sdkType}, Intent: ${intent}`);
+async function getCollection(chromaClient) {
+    return chromaClient.getOrCreateCollection({ name: COLLECTION_NAME });
+}
 
-    return STUB_DOCS[sdkType] || STUB_DOCS['blob-storage'];
-};
+async function generateEmbedding(text) {
+    const openai = createOpenAIClient();
+    const response = await openai.embeddings.create({
+        model: EMBEDDING_MODEL,
+        input: text,
+    });
+
+    const vector = response?.data?.[0]?.embedding;
+    if (!vector) {
+        throw new Error('Failed to generate query embedding.');
+    }
+
+    return vector;
+}
+
+async function retrieveRelevantDocs(query, maxResults = DEFAULT_RESULT_COUNT) {
+    if (!query || !query.trim()) {
+        return [];
+    }
+
+    try {
+        const embedding = await generateEmbedding(query);
+        const chroma = createChromaClient();
+        const collection = await getCollection(chroma);
+
+        const result = await collection.query({
+            queryEmbeddings: [embedding],
+            nResults: maxResults,
+            include: ['documents', 'metadatas', 'distances'],
+        });
+
+        const docs = result?.documents?.[0] || [];
+        return docs.filter(Boolean).slice(0, maxResults);
+    } catch (error) {
+        console.error(`[RAG] Retrieval failed: ${error.message}`);
+        return [];
+    }
+}
+
+exports.retrieveRelevantDocs = retrieveRelevantDocs;
