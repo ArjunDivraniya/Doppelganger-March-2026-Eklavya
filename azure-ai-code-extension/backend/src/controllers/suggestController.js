@@ -31,26 +31,28 @@ exports.handleSuggest = async (req, res, next) => {
         // Step 1 — Analyze the code context
         const analysis = contextAnalyzer.analyze({ language, imports, currentLine, context });
 
-        // Step 2 — Retrieve relevant documentation (RAG – stub)
-        const retrievedDocs = await ragService.retrieveDocumentation(analysis.sdkType, analysis.intent);
+        const userCode = [context, currentLine].filter(Boolean).join('\n');
+        const userQuery = `${analysis.sdkType} ${analysis.intent} ${currentLine}`.trim();
 
-        // Step 3 — Build the LLM prompt
-        const messages = promptBuilder.build({
-            retrievedDocs,
-            codeContext: context || '',
-            currentLine,
-            language,
-            analysis,
+        // Step 2 — Retrieve relevant documentation via vector search
+        const docs = await ragService.retrieveRelevantDocs(userQuery);
+
+        // Step 3 — Build prompt for the LLM
+        const prompt = promptBuilder.buildPrompt({
+            userCode,
+            retrievedDocs: docs,
         });
 
         // Step 4 — Call the LLM
-        const rawSuggestion = await llmService.generateCompletion(messages);
+        const rawSuggestion = await llmService.generate(prompt);
 
         // Step 5 — Post-process the response
         const suggestion = responseProcessor.process(rawSuggestion);
 
         const latency = Date.now() - startTime;
-        console.log(`[SUGGEST] Completed in ${latency}ms | SDK: ${analysis.sdkType} | Intent: ${analysis.intent}`);
+        console.log(
+            `[SUGGEST] Completed in ${latency}ms | SDK: ${analysis.sdkType} | Intent: ${analysis.intent} | RetrievedDocs: ${docs.length}`
+        );
 
         res.json({ suggestion });
     } catch (err) {
