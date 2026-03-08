@@ -7,7 +7,7 @@ import { InlineSuggestionProvider } from "./inlineProvider";
 import { logInfo, showDebugLogs, logWarn } from "./logger";
 import { detectAzure } from "./azureDetector";
 import { buildContext } from "./contextBuilder";
-import { fetchSuggestion } from "./apiService";
+import { fetchSuggestion, markAsAccepted } from "./apiService";
 
 const BACKEND_URL = (process.env.BACKEND_URL && process.env.BACKEND_URL.trim() !== "")
     ? process.env.BACKEND_URL
@@ -173,6 +173,12 @@ function sendToWebview(context: vscode.ExtensionContext, suggestion: string, ser
                     new vscode.SnippetString(msg.suggestion),
                     editor.selection.active
                 );
+
+                // NOTIFY TRACKERS ON ACCEPT
+                markAsAccepted(msg.suggestion);
+                watcher.notifyAccepted();
+
+                console.log("[extension] ✅ Accepted and trackers notified");
                 vscode.window.showInformationMessage("✓ Azure snippet inserted!");
             }
         }

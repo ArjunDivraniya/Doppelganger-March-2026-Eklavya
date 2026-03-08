@@ -3,7 +3,7 @@
 import * as vscode from "vscode";
 import { detectAzure } from "./azureDetector";
 import { buildContext } from "./contextBuilder";
-import { fetchSuggestion } from "./apiService";
+import { fetchSuggestion, getRemainingLines } from "./apiService";
 import { logError, logInfo, logWarn } from "./logger";
 
 const SUPPORTED_LANGUAGES = ["typescript", "javascript", "typescriptreact", "javascriptreact", "csharp"];
@@ -71,8 +71,24 @@ export class InlineSuggestionProvider implements vscode.InlineCompletionItemProv
                 return undefined;
             }
 
+            // FILTER ALREADY WRITTEN LINES
+            // Get full file text
+            const fullFileText = document.getText();
+
+            // Filter out already written lines
+            const remaining = getRemainingLines(suggestion, fullFileText);
+
+            // Nothing left to suggest — all lines already written
+            if (!remaining || remaining.trim().length === 0) {
+                console.log("[inlineProvider] \uD83D\uDEAB No new lines to suggest");
+                return [];
+            }
+
+            // Use remaining instead of full suggestion
+            const suggestionToShow = remaining;
+
             // STEP 1 — Fix newlines again as safety net
-            let fixed = suggestion
+            let fixed = suggestionToShow
                 .replace(/\\n/g, "\n")
                 .replace(/\\t/g, "\t")
                 .replace(/^```[\w]*\n?/, "")
