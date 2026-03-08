@@ -3,7 +3,7 @@
 import * as vscode from "vscode";
 import { detectAzure } from "./azureDetector";
 import { buildContext } from "./contextBuilder";
-import { fetchSuggestion, getRemainingLines } from "./apiService";
+import { fetchSuggestion, getRemainingLines, wasAlreadyAccepted } from "./apiService";
 import { logError, logInfo, logWarn } from "./logger";
 
 const SUPPORTED_LANGUAGES = ["typescript", "javascript", "typescriptreact", "javascriptreact", "csharp"];
@@ -51,7 +51,19 @@ export class InlineSuggestionProvider implements vscode.InlineCompletionItemProv
         }
 
         // 3. Build context for API
-        const codeContext = buildContext(document, position, detection);
+        const diagnostics = vscode.languages
+            .getDiagnostics(document.uri)
+            .filter(d => d.severity === vscode.DiagnosticSeverity.Error);
+
+        const targetDiagnostic = this.pickTargetDiagnostic(diagnostics, position);
+        const targetPosition = targetDiagnostic
+            ? new vscode.Position(
+                targetDiagnostic.range.start.line,
+                document.lineAt(targetDiagnostic.range.start.line).text.length
+            )
+            : position;
+
+        const codeContext = buildContext(document, targetPosition, detection);
 
         // 4. Fetch suggestion (Mock or Real)
         try {
@@ -64,6 +76,11 @@ export class InlineSuggestionProvider implements vscode.InlineCompletionItemProv
             if (!suggestion) {
                 logWarn("InlineProvider", "No suggestion returned by API layer");
                 return undefined;
+            }
+
+            if (wasAlreadyAccepted(suggestion)) {
+                logInfo("InlineProvider", "Skipping already accepted suggestion");
+                return [];
             }
 
             if (token.isCancellationRequested) {
@@ -98,7 +115,7 @@ export class InlineSuggestionProvider implements vscode.InlineCompletionItemProv
                 .trim();
 
             // STEP 2 — Detect current line indentation
-            const currentLineText = document.lineAt(position.line).text;
+            const currentLineText = document.lineAt(targetPosition.line).text;
             const indentMatch = currentLineText.match(/^(\s*)/);
             const indentation = indentMatch ? indentMatch[1] : "";
 
@@ -112,19 +129,27 @@ export class InlineSuggestionProvider implements vscode.InlineCompletionItemProv
                 })
                 .join("\n");
 
+            const dedupedAtTarget = this.removeImmediateDuplicateAtTarget(document, targetPosition, formatted);
+            if (!dedupedAtTarget || dedupedAtTarget.trim().length === 0) {
+                logInfo("InlineProvider", "Skipping duplicate suggestion at target location");
+                return [];
+            }
+
             // STEP 4 — Return as InlineCompletionItem
-            const insertionRange = new vscode.Range(position, position);
-            const item = new vscode.InlineCompletionItem(formatted, insertionRange);
+            const insertionRange = new vscode.Range(targetPosition, targetPosition);
+            const item = new vscode.InlineCompletionItem(dedupedAtTarget, insertionRange);
 
             // Optional: Provide a command to log "acceptance"
             item.command = {
                 command: "azureai.acceptSuggestion",
                 title: "Accept Suggestion",
-                arguments: [formatted, detection.detectedServices[0]]
+                arguments: [dedupedAtTarget, detection.detectedServices[0]]
             };
 
             logInfo("InlineProvider", "Inline item prepared", {
-                preview: formatted.slice(0, 100)
+                preview: dedupedAtTarget.slice(0, 100),
+                targetLine: targetPosition.line,
+                hasErrorTarget: !!targetDiagnostic
             });
 
             return [item];
@@ -134,5 +159,60 @@ export class InlineSuggestionProvider implements vscode.InlineCompletionItemProv
             });
             return undefined;
         }
+    }
+
+    private pickTargetDiagnostic(
+        diagnostics: vscode.Diagnostic[],
+        cursor: vscode.Position
+    ): vscode.Diagnostic | undefined {
+        if (diagnostics.length === 0) return undefined;
+
+        const sorted = diagnostics
+            .slice()
+            .sort((a, b) => {
+                const aDist = Math.abs(a.range.start.line - cursor.line);
+                const bDist = Math.abs(b.range.start.line - cursor.line);
+                return aDist - bDist;
+            });
+
+        return sorted[0];
+    }
+
+    private removeImmediateDuplicateAtTarget(
+        document: vscode.TextDocument,
+        target: vscode.Position,
+        suggestion: string
+    ): string | null {
+        const normalize = (line: string): string => line.trim().replace(/\s+/g, " ");
+        const suggestionLines = suggestion.split("\n").map(l => l.replace(/\r/g, ""));
+        const candidate = suggestionLines.filter(l => l.trim().length > 0);
+        if (candidate.length === 0) return null;
+
+        const existingWindow: string[] = [];
+        for (let i = target.line; i < Math.min(document.lineCount, target.line + candidate.length + 1); i++) {
+            existingWindow.push(document.lineAt(i).text);
+        }
+
+        let overlap = 0;
+        const maxOverlap = Math.min(candidate.length, existingWindow.length);
+        const candidateNorm = candidate.map(normalize);
+        const existingNorm = existingWindow.map(normalize);
+
+        for (let size = maxOverlap; size > 0; size--) {
+            let matches = true;
+            for (let i = 0; i < size; i++) {
+                if (candidateNorm[i] !== existingNorm[i]) {
+                    matches = false;
+                    break;
+                }
+            }
+            if (matches) {
+                overlap = size;
+                break;
+            }
+        }
+
+        if (overlap >= candidate.length) return null;
+        return candidate.slice(overlap).join("\n");
     }
 }

@@ -2,6 +2,7 @@
 
 export const MOCK_SUGGESTIONS: Record<string, string> = {
     "blob-storage:BlobServiceClient": `// [AzureAI Suggest]
+// Make sure to install: npm install @azure/storage-blob @azure/identity
 const blobServiceClient = new BlobServiceClient(
   \`https://\${accountName}.blob.core.windows.net\`,
   new DefaultAzureCredential()
@@ -17,14 +18,16 @@ console.log("Upload block blob success:", uploadBlobResponse.requestId);`,
 const downloadResponse = await blobClient.download(0);
 const downloaded = await streamToBuffer(downloadResponse.readableStreamBody!);`,
 
-    "cosmos-db:CosmosClient": `const client = new CosmosClient({ endpoint, key });
+    "cosmos-db:CosmosClient": `// Make sure to install: npm install @azure/cosmos
+const client = new CosmosClient({ endpoint, key });
 const { database } = await client.databases.createIfNotExists({ id: databaseId });
 const { container } = await database.containers.createIfNotExists({ id: containerId });`,
 
     "cosmos-db:query": `const querySpec = { query: "SELECT * FROM c WHERE c.id = @id", parameters: [{ name: "@id", value: itemId }] };
 const { resources: items } = await container.items.query(querySpec).fetchAll();`,
 
-    "key-vault:SecretClient": `const credential = new DefaultAzureCredential();
+    "key-vault:SecretClient": `// Make sure to install: npm install @azure/keyvault-secrets @azure/identity
+const credential = new DefaultAzureCredential();
 const client = new SecretClient(vaultUrl, credential);
 const secret = await client.getSecret(secretName);
 console.log("Secret value:", secret.value);`,
@@ -33,13 +36,15 @@ console.log("Secret value:", secret.value);`,
 // Automatically tries: Environment Variables → Managed Identity → VS Code → Azure CLI
 // Use this instead of connection strings for production security.`,
 
-    "service-bus:ServiceBusClient": `const sbClient = new ServiceBusClient(connectionString);
+    "service-bus:ServiceBusClient": `// Make sure to install: npm install @azure/service-bus
+const sbClient = new ServiceBusClient(connectionString);
 const sender = sbClient.createSender(queueName);
 await sender.sendMessages({ body: "Hello Azure Service Bus!" });
 await sender.close();
 await sbClient.close();`,
 
-    "event-hubs:EventHubProducerClient": `const producer = new EventHubProducerClient(connectionString, eventHubName);
+    "event-hubs:EventHubProducerClient": `// Make sure to install: npm install @azure/event-hubs
+const producer = new EventHubProducerClient(connectionString, eventHubName);
 const batch = await producer.createBatch();
 batch.tryAdd({ body: "First event" });
 await producer.sendBatch(batch);

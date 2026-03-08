@@ -1,17 +1,5 @@
 import * as vscode from "vscode";
-
-// Map recognizing common Azure SDK symbols and their respective npm packages.
-const AZURE_IMPORT_MAP: Record<string, { pkg: string, isDefault?: boolean }> = {
-    BlobServiceClient: { pkg: "@azure/storage-blob" },
-    ContainerClient: { pkg: "@azure/storage-blob" },
-    BlockBlobClient: { pkg: "@azure/storage-blob" },
-    CosmosClient: { pkg: "@azure/cosmos" },
-    SecretClient: { pkg: "@azure/keyvault-secrets" },
-    DefaultAzureCredential: { pkg: "@azure/identity" },
-    ServiceBusClient: { pkg: "@azure/service-bus" },
-    EventHubProducerClient: { pkg: "@azure/event-hubs" },
-    TextAnalyticsClient: { pkg: "@azure/ai-text-analytics" }
-};
+import { AZURE_IMPORT_MAP } from "./importInjector";
 
 export class AzureImportFixer implements vscode.CodeActionProvider {
     public static readonly providedCodeActionKinds = [
@@ -61,9 +49,41 @@ export class AzureImportFixer implements vscode.CodeActionProvider {
             importStatement = `import { ${symbol} } from "${pkg}";\n`;
         }
 
-        // Add the import to the top of the file (line 0)
-        fix.edit.insert(document.uri, new vscode.Position(0, 0), importStatement);
+        if (this.hasExistingImport(document, symbol, pkg)) {
+            fix.disabled = {
+                reason: `Import for ${symbol} from ${pkg} already exists`
+            };
+            return fix;
+        }
+
+        const insertionLine = this.findImportInsertionLine(document);
+        fix.edit.insert(document.uri, new vscode.Position(insertionLine, 0), importStatement);
 
         return fix;
+    }
+
+    private hasExistingImport(document: vscode.TextDocument, symbol: string, pkg: string): boolean {
+        const text = document.getText();
+        const escapedPkg = pkg.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const hasEsImport = new RegExp(`import\\s*\\{[^}]*\\b${symbol}\\b[^}]*\\}\\s*from\\s*[\"']${escapedPkg}[\"']`, "m").test(text);
+        const hasRequireImport = new RegExp(`const\\s*\\{[^}]*\\b${symbol}\\b[^}]*\\}\\s*=\\s*require\\(\\s*[\"']${escapedPkg}[\"']\\s*\\)`, "m").test(text);
+        return hasEsImport || hasRequireImport;
+    }
+
+    private findImportInsertionLine(document: vscode.TextDocument): number {
+        let insertionLine = 0;
+        for (let i = 0; i < document.lineCount; i++) {
+            const line = document.lineAt(i).text.trim();
+            if (
+                line.startsWith("import ") ||
+                line.startsWith("const ") && line.includes("= require(") ||
+                line.length === 0
+            ) {
+                insertionLine = i + 1;
+                continue;
+            }
+            break;
+        }
+        return insertionLine;
     }
 }

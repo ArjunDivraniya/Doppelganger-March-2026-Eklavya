@@ -4,15 +4,13 @@ import * as vscode from "vscode";
 console.log("[AzureAI] extension.ts script loading...");
 import { CodeWatcher } from "./codeWatcher";
 import { InlineSuggestionProvider } from "./inlineProvider";
-import { logInfo, showDebugLogs, logWarn } from "./logger";
+import { logInfo, showDebugLogs, logWarn, logError } from "./logger";
 import { AzureImportFixer } from "./importFixer";
 import { detectAzure } from "./azureDetector";
 import { buildContext } from "./contextBuilder";
 import { fetchSuggestion, markAsAccepted } from "./apiService";
-
-const BACKEND_URL = (process.env.BACKEND_URL && process.env.BACKEND_URL.trim() !== "")
-    ? process.env.BACKEND_URL
-    : "http://127.0.0.1:3005";
+import { config } from "./config";
+import { injectMissingImports } from "./importInjector";
 
 let webviewPanel: vscode.WebviewPanel | undefined;
 let watcher: CodeWatcher;
@@ -21,7 +19,7 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.showInformationMessage("⚡ AzureAI Suggestion Engine — Active (Copilot Mode)");
     console.log("⚡ AzureAI Code Suggest — activated");
     showDebugLogs();
-    logInfo("Extension", "Activated", { backendUrl: BACKEND_URL });
+    logInfo("Extension", "Activated", { backendUrl: config.BACKEND_URL });
 
     const inlineSuggestEnabled = vscode.workspace.getConfiguration("editor").get<boolean>("inlineSuggest.enabled");
     if (!inlineSuggestEnabled) {
@@ -47,7 +45,7 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(statusBar);
 
     // 2. Register Inline Completion Provider (Copilot Style)
-    const inlineProvider = new InlineSuggestionProvider(BACKEND_URL);
+    const inlineProvider = new InlineSuggestionProvider(config.BACKEND_URL);
     const supportedLanguages = ["typescript", "javascript", "typescriptreact", "javascriptreact", "csharp"];
 
     context.subscriptions.push(
@@ -69,7 +67,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // 3. Create watcher with callback to send suggestions to webview (Dashboard Mode)
     watcher = new CodeWatcher(
-        BACKEND_URL,
+        config.BACKEND_URL,
         statusBar,
         (suggestion, service, isManual) => sendToWebview(context, suggestion, service, isManual)
     );
@@ -116,7 +114,7 @@ export function activate(context: vscode.ExtensionContext) {
         }
 
         const codeContext = buildContext(doc, pos, detection);
-        const suggestion = await fetchSuggestion(codeContext, BACKEND_URL);
+        const suggestion = await fetchSuggestion(codeContext, config.BACKEND_URL);
 
         if (!suggestion) {
             vscode.window.showWarningMessage("AzureAI Debug Probe: Request completed but no suggestion returned.");
@@ -131,9 +129,28 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.window.showInformationMessage("AzureAI Debug Probe: Suggestion received. Check 'AzureAI Debug' output.");
     });
 
-    const acceptCommand = vscode.commands.registerCommand("azureai.acceptSuggestion", (suggestion, service) => {
+    const acceptCommand = vscode.commands.registerCommand("azureai.acceptSuggestion", (suggestion: string, service: string) => {
         console.log(`[extension] ✓ Suggestion accepted for ${service}`);
-        // You could send telemetry here
+
+        if (typeof suggestion === "string" && suggestion.trim().length > 0) {
+            markAsAccepted(suggestion);
+        }
+
+        watcher.notifyAccepted();
+
+        // Automate import injection
+        const editor = vscode.window.activeTextEditor;
+        if (editor) {
+            injectMissingImports(editor.document, suggestion).catch(err => {
+                logError("Extension", "Failed to inject missing imports automatically", { error: err.message });
+            });
+
+            const lastLine = Math.max(0, editor.document.lineCount - 1);
+            const lastChar = editor.document.lineAt(lastLine).text.length;
+            const endPos = new vscode.Position(lastLine, lastChar);
+            editor.selection = new vscode.Selection(endPos, endPos);
+            editor.revealRange(new vscode.Range(endPos, endPos), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+        }
     });
 
     context.subscriptions.push(manualCommand, acceptCommand, showLogsCommand, debugProbeCommand);

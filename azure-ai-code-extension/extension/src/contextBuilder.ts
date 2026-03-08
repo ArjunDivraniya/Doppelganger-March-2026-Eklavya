@@ -33,10 +33,14 @@ export function buildContext(
     // d) currentLine
     const currentLine = lines[position.line] ?? "";
 
+    const previousTail = previousCode.slice(-160).replace(/\s+/g, " ").trim();
+
     // e) cacheKey
     const cacheKey = [
         ...detection.detectedServices,
-        currentLine.trim().slice(0, 40)
+        String(position.line),
+        currentLine.trim().slice(0, 60),
+        previousTail
     ].join(":");
 
     // f) Return full CodeContext object

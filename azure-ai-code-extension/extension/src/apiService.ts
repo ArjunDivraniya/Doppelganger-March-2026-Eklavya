@@ -6,9 +6,9 @@ import * as vscode from "vscode";
 import { CodeContext } from "./contextBuilder";
 import { getMockSuggestion } from "./mockData";
 import { logError, logInfo, logWarn } from "./logger";
+import { config } from "./config";
 
 const sessionCache = new Map<string, string>();
-const DEBUG_DISABLE_SESSION_CACHE = true;
 
 // ── Accepted Suggestions Tracker ──────────────────────────────────
 const acceptedSuggestions = new Set<string>();
@@ -35,52 +35,65 @@ export function getRemainingLines(
     fullSuggestion: string,
     currentFileText: string
 ): string | null {
-    // Split suggestion into individual lines
-    const suggestionLines = fullSuggestion
+    const rawSuggestionLines = fullSuggestion
         .split("\n")
-        .map(l => l.trim())
-        .filter(l => l.length > 0);
+        .map(l => l.replace(/\r/g, ""));
 
-    // Split current file into individual lines
-    const fileLines = currentFileText
-        .split("\n")
-        .map(l => l.trim())
-        .filter(l => l.length > 0);
-
-    // Find how many suggestion lines already exist in file
-    let matchedCount = 0;
-    for (const suggLine of suggestionLines) {
-        const existsInFile = fileLines.some(fileLine =>
-            fileLine === suggLine
-        );
-        if (existsInFile) {
-            matchedCount++;
-        } else {
-            break; // stop at first line not yet written
-        }
-    }
-
-    // If no lines matched — return full suggestion
-    if (matchedCount === 0) return fullSuggestion;
-
-    // If ALL lines already written — return null (nothing left)
-    if (matchedCount >= suggestionLines.length) {
-        console.log("[apiService] 🚫 All suggestion lines already written");
+    const suggestionLines = rawSuggestionLines.filter(l => l.trim().length > 0);
+    if (suggestionLines.length === 0) {
         return null;
     }
 
-    // Return only the remaining unwritten lines
-    const remaining = suggestionLines
-        .slice(matchedCount)
-        .join("\n");
+    const fileLines = currentFileText
+        .split("\n")
+        .map(l => l.replace(/\r/g, ""))
+        .filter(l => l.trim().length > 0);
 
-    console.log(
-        "[apiService] 📋 Returning remaining",
-        suggestionLines.length - matchedCount,
-        "lines of",
-        suggestionLines.length
-    );
+    const normalize = (line: string): string => line.trim().replace(/\s+/g, " ");
+    const suggestionNorm = suggestionLines.map(normalize);
+    const fileNorm = fileLines.map(normalize);
 
+    // If the complete suggestion already exists as a contiguous block, skip it fully.
+    if (suggestionNorm.length <= fileNorm.length) {
+        for (let i = 0; i <= fileNorm.length - suggestionNorm.length; i++) {
+            let isBlockMatch = true;
+            for (let j = 0; j < suggestionNorm.length; j++) {
+                if (fileNorm[i + j] !== suggestionNorm[j]) {
+                    isBlockMatch = false;
+                    break;
+                }
+            }
+            if (isBlockMatch) {
+                console.log("[apiService] 🚫 Suggestion block already exists in file");
+                return null;
+            }
+        }
+    }
+
+    // Remove only overlapping prefix already present at the end of current text.
+    let overlap = 0;
+    const maxOverlap = Math.min(fileNorm.length, suggestionNorm.length);
+    for (let size = maxOverlap; size > 0; size--) {
+        let matches = true;
+        for (let i = 0; i < size; i++) {
+            if (fileNorm[fileNorm.length - size + i] !== suggestionNorm[i]) {
+                matches = false;
+                break;
+            }
+        }
+        if (matches) {
+            overlap = size;
+            break;
+        }
+    }
+
+    if (overlap >= suggestionLines.length) {
+        console.log("[apiService] 🚫 Entire suggestion already covered by trailing overlap");
+        return null;
+    }
+
+    const remaining = suggestionLines.slice(overlap).join("\n");
+    console.log("[apiService] 📋 Returning remaining", suggestionLines.length - overlap, "lines of", suggestionLines.length);
     return remaining;
 }
 
@@ -126,15 +139,8 @@ function cleanSuggestion(raw: string): string {
         .replace(/\\'/g, "'")          // fix escaped single quotes
         .replace(/^```[\w]*\n?/, "")    // strip opening markdown fence
         .replace(/\n?```$/, "")         // strip closing markdown fence
-        .replace(/^\n+/, "")            // remove leading newlines
-        .replace(/\n{3,}/g, "\n\n")     // collapse 3+ blank lines to 1
         .trim();                         // remove leading/trailing whitespace
 }
-
-export const BACKEND_READY: boolean = true;
-const FALLBACK_TO_MOCK_ON_BACKEND_ERROR: boolean = true;
-// CHANGE THIS TO true WHEN BACKEND IS CONNECTED
-// This is the ONLY line to change when switching from mock to real
 
 export async function fetchSuggestion(
     context: CodeContext,
@@ -143,7 +149,7 @@ export async function fetchSuggestion(
     const startedAt = Date.now();
 
     // Always execute mock generation while backend is disabled.
-    if (BACKEND_READY === false) {
+    if (config.BACKEND_READY === false) {
         const result = getMockSuggestion(context.detectedServices, context.currentLine, context.previousCode);
         logInfo("ApiService", "OFFLINE MODE: Using mock suggestions (BACKEND_READY=false)", {
             hasSuggestion: !!result,
@@ -158,7 +164,7 @@ export async function fetchSuggestion(
 
 
     // Debug phase: bypass session cache so every keystroke makes a fresh backend request.
-    if (!DEBUG_DISABLE_SESSION_CACHE) {
+    if (!config.DEBUG_DISABLE_SESSION_CACHE) {
         const cached = getCached(context.cacheKey);
         if (cached) {
             logInfo("ApiService", "Session cache hit", {
@@ -206,7 +212,7 @@ export async function fetchSuggestion(
         const suggestion = response.data?.suggestion;
         if (suggestion) {
             const cleaned = cleanSuggestion(suggestion);
-            if (!DEBUG_DISABLE_SESSION_CACHE) {
+            if (!config.DEBUG_DISABLE_SESSION_CACHE) {
                 setCache(context.cacheKey, cleaned);
             }
             logInfo("ApiService", "DATA FLOW STEP 1: Backend response received by Extension logic", {
@@ -239,7 +245,7 @@ export async function fetchSuggestion(
             `AzureAI backend unreachable at ${targetUrl}. ${err?.message ?? "Unknown error"}`
         );
 
-        if (FALLBACK_TO_MOCK_ON_BACKEND_ERROR) {
+        if (config.FALLBACK_TO_MOCK_ON_BACKEND_ERROR) {
             logWarn("ApiService", "BACKEND UNAVAILABLE: Using mock fallback suggestion", {
                 originalError: err.message,
                 services: context.detectedServices
