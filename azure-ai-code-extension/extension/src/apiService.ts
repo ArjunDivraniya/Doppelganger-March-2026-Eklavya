@@ -1,4 +1,5 @@
 // PHASE 4 — API SERVICE (Mock → Real API toggle)
+// ACCEPTED SUGGESTION TRACKER
 
 import axios from "axios";
 import * as vscode from "vscode";
@@ -8,6 +9,80 @@ import { logError, logInfo, logWarn } from "./logger";
 
 const sessionCache = new Map<string, string>();
 const DEBUG_DISABLE_SESSION_CACHE = true;
+
+// ── Accepted Suggestions Tracker ──────────────────────────────────
+const acceptedSuggestions = new Set<string>();
+
+export function markAsAccepted(suggestion: string): void {
+    const key = suggestion.trim().slice(0, 80);
+    acceptedSuggestions.add(key);
+    // Keep Set bounded to 20 entries — evict oldest when full
+    if (acceptedSuggestions.size > 20) {
+        const oldest = acceptedSuggestions.values().next().value;
+        if (oldest !== undefined) {
+            acceptedSuggestions.delete(oldest);
+        }
+    }
+    console.log("[apiService] ✅ Marked as accepted:", key.slice(0, 40));
+}
+
+export function wasAlreadyAccepted(suggestion: string): boolean {
+    const key = suggestion.trim().slice(0, 80);
+    return acceptedSuggestions.has(key);
+}
+
+export function getRemainingLines(
+    fullSuggestion: string,
+    currentFileText: string
+): string | null {
+    // Split suggestion into individual lines
+    const suggestionLines = fullSuggestion
+        .split("\n")
+        .map(l => l.trim())
+        .filter(l => l.length > 0);
+
+    // Split current file into individual lines
+    const fileLines = currentFileText
+        .split("\n")
+        .map(l => l.trim())
+        .filter(l => l.length > 0);
+
+    // Find how many suggestion lines already exist in file
+    let matchedCount = 0;
+    for (const suggLine of suggestionLines) {
+        const existsInFile = fileLines.some(fileLine =>
+            fileLine === suggLine
+        );
+        if (existsInFile) {
+            matchedCount++;
+        } else {
+            break; // stop at first line not yet written
+        }
+    }
+
+    // If no lines matched — return full suggestion
+    if (matchedCount === 0) return fullSuggestion;
+
+    // If ALL lines already written — return null (nothing left)
+    if (matchedCount >= suggestionLines.length) {
+        console.log("[apiService] 🚫 All suggestion lines already written");
+        return null;
+    }
+
+    // Return only the remaining unwritten lines
+    const remaining = suggestionLines
+        .slice(matchedCount)
+        .join("\n");
+
+    console.log(
+        "[apiService] 📋 Returning remaining",
+        suggestionLines.length - matchedCount,
+        "lines of",
+        suggestionLines.length
+    );
+
+    return remaining;
+}
 
 function normalizeBackendBaseUrl(rawUrl: string): string {
     const trimmed = rawUrl.trim().replace(/\/+$/, "");
@@ -74,7 +149,11 @@ export async function fetchSuggestion(
             hasSuggestion: !!result,
             services: context.detectedServices
         });
-        return result ? cleanSuggestion(result) : null;
+        if (!result) return null;
+        const cleanedMock = cleanSuggestion(result);
+        const remainingMock = getRemainingLines(cleanedMock, context.previousCode);
+        if (!remainingMock) return null;
+        return remainingMock;
     }
 
 
@@ -134,7 +213,9 @@ export async function fetchSuggestion(
                 latencyMs: Date.now() - startedAt,
                 suggestionPreview: cleaned.slice(0, 50) + "..."
             });
-            return cleaned;
+            const remaining = getRemainingLines(cleaned, context.previousCode);
+            if (!remaining) return null;
+            return remaining;
         }
 
         return null;
@@ -164,7 +245,11 @@ export async function fetchSuggestion(
                 services: context.detectedServices
             });
             const fallback = getMockSuggestion(context.detectedServices, context.currentLine);
-            return fallback ? cleanSuggestion(fallback) : null;
+            if (!fallback) return null;
+            const cleanedFallback = cleanSuggestion(fallback);
+            const remainingFallback = getRemainingLines(cleanedFallback, context.previousCode);
+            if (!remainingFallback) return null;
+            return remainingFallback;
         }
 
 
