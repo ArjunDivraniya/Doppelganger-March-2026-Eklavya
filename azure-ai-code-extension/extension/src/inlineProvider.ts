@@ -49,11 +49,10 @@ export class InlineSuggestionProvider implements vscode.InlineCompletionItemProv
             if (!suggestion || token.isCancellationRequested) return undefined;
 
             // 5. Create Inline Completion Item
-            // We replace the current prefix/line for a "Copilot" feel
-            const range = new vscode.Range(position.line, 0, position.line, position.character);
+            // We use the current position to provide the ghost text
             const item = new vscode.InlineCompletionItem(
                 suggestion,
-                range
+                new vscode.Range(position, position)
             );
 
             // Optional: Provide a command to log "acceptance"

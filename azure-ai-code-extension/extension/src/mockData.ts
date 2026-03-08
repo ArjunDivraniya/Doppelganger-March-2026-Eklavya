@@ -64,13 +64,31 @@ const sbClient = new ServiceBusClient(connectionString);`,
 const producer = new EventHubProducerClient(connectionString, eventHubName);`,
 };
 
+const SERVICE_ALIASES: Record<string, string[]> = {
+    "blob-storage": ["blob", "storage", "blobserviceclient"],
+    "cosmos-db": ["cosmos", "cosmosclient"],
+    "key-vault": ["keyvault", "secret", "secretclient", "vault"],
+    "azure-identity": ["credential", "defaultazurecredential", "identity"],
+    "service-bus": ["servicebus", "service bus", "servicebusclient"],
+    "event-hubs": ["eventhub", "event hub", "eventhubproducerclient"],
+    "cognitive-services": ["textanalytics", "text analytics", "analytics"]
+};
+
 export function getMockSuggestion(
     detectedServices: string[],
     currentLine: string
 ): string | null {
     const currentLineLower = currentLine.toLowerCase();
+    const candidateServices = new Set(detectedServices);
 
-    for (const service of detectedServices) {
+    // Recover from sparse detection by inferring service from what the developer typed.
+    for (const [service, aliases] of Object.entries(SERVICE_ALIASES)) {
+        if (aliases.some((alias) => currentLineLower.includes(alias.toLowerCase()))) {
+            candidateServices.add(service);
+        }
+    }
+
+    for (const service of candidateServices) {
         // Try keyword match first (CASE-INSENSITIVE)
         for (const key in MOCK_SUGGESTIONS) {
             if (key.startsWith(service + ":")) {

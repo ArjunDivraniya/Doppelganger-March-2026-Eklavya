@@ -28,14 +28,18 @@ const AZURE_FILE_NAME = /azure[-.]|\.azure\.|azure-config|azureservice/;
 
 const KEYWORD_SERVICE_MAP: Record<string, string> = {
     "blob": "blob-storage",
+    "storage": "blob-storage",
     "cosmos": "cosmos-db",
     "secret": "key-vault",
     "keyvault": "key-vault",
     "credential": "azure-identity",
+    "identity": "azure-identity",
     "servicebus": "service-bus",
     "eventhub": "event-hubs",
     "textanalytics": "cognitive-services"
 };
+
+const FORCE_ACTIVATION_MARKER = "// @azure-debug";
 
 export interface DetectionResult {
     isAzure: boolean;
@@ -48,8 +52,9 @@ export function detectAzure(
     currentLine: string,
     fileName: string
 ): DetectionResult {
-    // FORCE ACTIVATION MODE: Allow debug comment for testing
-    const forceActivationMode = /\/\/\s*@azure-debug/.test(fullText.slice(0, 200));
+    // FORCE ACTIVATION MODE: only enabled by a top-of-file debug marker
+    const firstLines = fullText.split("\n").slice(0, 10).join("\n");
+    const forceActivationMode = firstLines.includes(FORCE_ACTIVATION_MARKER);
 
     // a) Find JS/TS imports
     const tsImportRegex = /from\s+['"](@azure\/[^'"]+)['"]/g;
@@ -84,16 +89,18 @@ export function detectAzure(
                 detectedServices.push(service);
             }
         }
-        // Fallback to "azure" if still empty
+        // Fallback to a broad Azure identity suggestion when no service keyword exists.
         if (detectedServices.length === 0) {
-            detectedServices.push("azure-identity"); // Default fallback
+            detectedServices.push("azure-identity");
         }
     }
+
+    const uniqueServices = Array.from(new Set(detectedServices));
 
     // g) Return result
     return {
         isAzure,
-        detectedServices,
+        detectedServices: uniqueServices,
         detectedImports
     };
 }
