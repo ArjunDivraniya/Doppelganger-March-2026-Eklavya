@@ -235,8 +235,8 @@ See `azure-ai-code-extension/extension/LICENSE`.
 |------|------|----------------|
 | Arjun | Extension Developer | codeWatcher, azureDetector, contextBuilder, apiService |
 | Dhruvesh | UI Developer | Webview panel, React sidebar, accept/reject UI |
-| [Backend Dev 1] | Backend Developer | Express API, Azure OpenAI integration |
-| [Backend Dev 2] | Backend Developer | RAG system, Redis caching, Azure deployment |
+| Priy Mavani | Backend Developer | Express API, Azure OpenAI integration |
+| Mayank Dudhatra | Backend Developer | RAG system, Redis caching, Azure, deployment, Researcher, Feedback system |
 
 ---
 
