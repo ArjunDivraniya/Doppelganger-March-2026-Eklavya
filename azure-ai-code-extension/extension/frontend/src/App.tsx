@@ -2,6 +2,7 @@ import HeroSection from "./components/HeroSection";
 import HowItWorksSection from "./components/HowItWorksSection";
 import FeaturesSection from "./components/FeaturesSection";
 import DemoSection from "./components/DemoSection";
+import FeedbackSection from "./components/FeedbackSection";
 import Footer from "./components/Footer";
 
 function App() {
@@ -11,6 +12,7 @@ function App() {
       <HowItWorksSection />
       <FeaturesSection />
       <DemoSection />
+      <FeedbackSection />
       <Footer />
     </div>
   );

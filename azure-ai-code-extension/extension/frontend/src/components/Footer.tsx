@@ -4,7 +4,7 @@ export default function Footer() {
       <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-500">
         <span>
           Built with ⚡ by{" "}
-          <span className="text-gray-300 font-medium">Team Doppelganger — Eklavya Hackathon 2026</span>
+          <span className="text-gray-300 font-medium">Team Eklavya - Hackathon 2026</span>
         </span>
         <span className="flex items-center gap-1">
           Powered by{" "}
