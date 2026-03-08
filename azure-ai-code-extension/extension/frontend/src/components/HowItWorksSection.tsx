@@ -1,68 +1,87 @@
-import { motion } from "framer-motion";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Hand, Zap, Search, Code } from "lucide-react";
 
 const STEPS = [
   {
-    icon: (
-      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
-      </svg>
-    ),
-    title: "Developer Types Azure Code",
-    description: "Start typing Azure SDK imports or method calls in your editor.",
+    icon: <Code className="w-6 h-6" />,
+    title: "1. You Write Code",
+    shortDescription: "Start typing Azure SDK imports or method calls.",
+    longDescription:
+      "As you work in your editor, the extension monitors your code for specific triggers, such as importing an Azure SDK library or calling a known Azure method. This process is lightweight and runs entirely in the background.",
+    image: "/assets/overview-typing.png",
     color: "blue",
   },
   {
-    icon: (
-      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-      </svg>
-    ),
-    title: "Extension Detects Azure SDK",
-    description: "The watcher identifies Azure-related imports, keywords, and file patterns.",
+    icon: <Search className="w-6 h-6" />,
+    title: "2. Context is Detected",
+    shortDescription: "The extension identifies Azure-related patterns.",
+    longDescription:
+      "Using a combination of keyword matching and pattern recognition, the extension identifies the specific Azure service you're interacting with (e.g., Blob Storage, Cosmos DB). It analyzes the surrounding code to build a rich context for the AI.",
+    image: "/assets/overview-suggestion.png",
     color: "cyan",
   },
   {
-    icon: (
-      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
-      </svg>
-    ),
-    title: "AI Generates Inline Suggestion",
-    description: "Azure OpenAI processes context and returns a relevant code snippet.",
+    icon: <Zap className="w-6 h-6" />,
+    title: "3. AI Generates Suggestion",
+    shortDescription: "Azure OpenAI returns a relevant code snippet.",
+    longDescription:
+      "The collected context is sent to a specialized Azure OpenAI model. Our RAG pipeline enhances this process by injecting relevant, up-to-date documentation, ensuring the generated code is accurate and follows best practices.",
+    image: "/assets/feature-suggestion.png",
     color: "purple",
   },
   {
-    icon: (
-      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    ),
-    title: "Accept with TAB",
-    description: "Press TAB to insert the suggestion into your code instantly.",
+    icon: <Hand className="w-6 h-6" />,
+    title: "4. You Accept or Ignore",
+    shortDescription: "Press TAB to accept the inline suggestion.",
+    longDescription:
+      "The generated code appears as ghost text right at your cursor. You can accept it with a single keystroke (Tab) to instantly integrate it, or simply keep typing to ignore it. It's a seamless, non-intrusive workflow.",
+    image: "/assets/overview-accept.png",
     color: "green",
   },
 ];
 
-const colorMap: Record<string, { border: string; bg: string; text: string; glow: string }> = {
-  blue:   { border: "border-blue-500/30",   bg: "bg-blue-500/10",   text: "text-blue-400",   glow: "shadow-blue-500/20" },
-  cyan:   { border: "border-cyan-500/30",   bg: "bg-cyan-500/10",   text: "text-cyan-400",   glow: "shadow-cyan-500/20" },
-  purple: { border: "border-purple-500/30", bg: "bg-purple-500/10", text: "text-purple-400", glow: "shadow-purple-500/20" },
-  green:  { border: "border-green-500/30",  bg: "bg-green-500/10",  text: "text-green-400",  glow: "shadow-green-500/20" },
+const colorMap: Record<string, { border: string; bg: string; text: string; shadow: string }> = {
+  blue: { border: "border-blue-500", bg: "bg-blue-900/30", text: "text-blue-300", shadow: "shadow-blue-500/50" },
+  cyan: { border: "border-cyan-500", bg: "bg-cyan-900/30", text: "text-cyan-300", shadow: "shadow-cyan-500/50" },
+  purple: { border: "border-purple-500", bg: "bg-purple-900/30", text: "text-purple-300", shadow: "shadow-purple-500/50" },
+  green: { border: "border-green-500", bg: "bg-green-900/30", text: "text-green-300", shadow: "shadow-green-500/50" },
 };
 
-const container = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.2 } },
-};
-
-const cardVariant = {
-  hidden: { opacity: 0, y: 30 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" as const } },
-};
+const DetailPanel = ({ step, colors }: { step: (typeof STEPS)[0], colors: (typeof colorMap)[string] }) => (
+  <motion.div
+    className="w-1/2 px-4"
+    initial={{ opacity: 0, x: -50 }}
+    animate={{ opacity: 1, x: 0 }}
+    exit={{ opacity: 0, x: -50 }}
+    transition={{ duration: 0.4, ease: "easeInOut" }}
+  >
+    <div className="relative">
+      <div className={`absolute -inset-4 rounded-3xl bg-gradient-to-b ${colors.bg} opacity-20 blur-2xl`} />
+      <div className={`relative rounded-2xl border ${colors.border} bg-gray-900/70 backdrop-blur-md overflow-hidden`}>
+        <img
+          src={step.image}
+          alt={step.title}
+          className="w-full h-auto border-b border-gray-700"
+        />
+        <div className="p-6">
+          <p className="text-gray-300 leading-relaxed">{step.longDescription}</p>
+        </div>
+      </div>
+    </div>
+  </motion.div>
+);
 
 export default function HowItWorksSection() {
+  const [hoveredStep, setHoveredStep] = useState<number | null>(null);
+
+  const activeStepData = hoveredStep !== null ? STEPS[hoveredStep] : null;
+  const activeColors = activeStepData ? colorMap[activeStepData.color] : null;
+
+  const showPanel = hoveredStep !== null;
+
   return (
-    <section id="how-it-works" className="relative py-28 px-6">
+    <section id="how-it-works" className="relative py-28 px-6 overflow-hidden">
       {/* Section heading */}
       <motion.div
         className="text-center mb-16"
@@ -72,69 +91,65 @@ export default function HowItWorksSection() {
         transition={{ duration: 0.6 }}
       >
         <h2 className="text-3xl sm:text-4xl font-bold text-white">
-          How It{" "}
+          How{" "}
           <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-            Works
-          </span>
+            Azure AI Assistant
+          </span>{" "}
+          Works
         </h2>
         <p className="mt-4 text-gray-400 max-w-xl mx-auto">
-          From keystroke to suggestion in milliseconds — here's the flow.
+          An intuitive, four-step process that turns your keystrokes into production-ready Azure code.
         </p>
+        <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-gray-800/50 border border-gray-700 px-3 py-1 text-xs text-cyan-400">
+          <Hand className="w-3 h-3" />
+          Hover over a step to see details
+        </div>
       </motion.div>
 
-      {/* Steps */}
-      <motion.div
-        className="max-w-4xl mx-auto flex flex-col gap-0 items-center"
-        variants={container}
-        initial="hidden"
-        whileInView="show"
-        viewport={{ once: true, amount: 0.15 }}
-      >
-        {STEPS.map((step, i) => {
-          const c = colorMap[step.color];
-          return (
-            <div key={i} className="flex flex-col items-center w-full">
-              {/* Animated arrow connector */}
-              {i > 0 && (
+      <div className="max-w-7xl mx-auto" onMouseLeave={() => setHoveredStep(null)}>
+        <div className="flex justify-center items-start transition-all duration-500 ease-in-out">
+          {/* Left Panel */}
+          <AnimatePresence>
+            {showPanel && activeStepData && activeColors && (
+              <DetailPanel step={activeStepData} colors={activeColors} />
+            )}
+          </AnimatePresence>
+
+          {/* Steps Column */}
+          <motion.div
+            layout
+            className="flex flex-col gap-4"
+            style={{ width: showPanel ? '50%' : '66.66%' }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+          >
+            {STEPS.map((s, i) => {
+              const isActive = hoveredStep === i;
+              const c = colorMap[s.color];
+              return (
                 <motion.div
-                  className="flex flex-col items-center my-2"
-                  initial={{ opacity: 0, scaleY: 0 }}
-                  whileInView={{ opacity: 1, scaleY: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.4, delay: i * 0.15 }}
+                  key={i}
+                  onMouseEnter={() => setHoveredStep(i)}
+                  className={`p-6 rounded-xl border transition-all duration-300 cursor-pointer ${
+                    isActive
+                      ? `${c.border} ${c.bg} shadow-lg ${c.shadow}`
+                      : "border-gray-800 bg-gray-900/50 hover:bg-gray-800/50"
+                  }`}
                 >
-                  <div className="w-px h-10 bg-gradient-to-b from-gray-700 to-gray-800" />
-                  <svg className="w-4 h-4 text-blue-500 -mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                    <path
-                      fillRule="evenodd"
-                      d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
+                  <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${c.text} ${c.bg}`}>
+                      {s.icon}
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">{s.title}</h3>
+                      <p className="text-sm text-gray-400">{s.shortDescription}</p>
+                    </div>
+                  </div>
                 </motion.div>
-              )}
-
-              {/* Card */}
-              <motion.div
-                variants={cardVariant}
-                className={`w-full max-w-lg rounded-2xl border ${c.border} ${c.bg} backdrop-blur-sm p-6 flex items-start gap-5 shadow-lg ${c.glow} hover:shadow-xl transition-shadow`}
-              >
-                {/* Icon */}
-                <div className={`shrink-0 mt-1 ${c.text}`}>{step.icon}</div>
-                {/* Text */}
-                <div>
-                  <h3 className="text-lg font-semibold text-white">{step.title}</h3>
-                  <p className="text-sm text-gray-400 mt-1 leading-relaxed">{step.description}</p>
-                </div>
-                {/* Step number */}
-                <span className={`ml-auto shrink-0 text-xs font-mono ${c.text} opacity-60`}>
-                  0{i + 1}
-                </span>
-              </motion.div>
-            </div>
-          );
-        })}
-      </motion.div>
+              );
+            })}
+          </motion.div>
+        </div>
+      </div>
     </section>
   );
 }
