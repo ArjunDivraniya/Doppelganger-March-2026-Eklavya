@@ -1,7 +1,7 @@
 // PHASE 3 — CODE WATCHER (Orchestrator)
 
 import * as vscode from "vscode";
-import { detectAzure } from "./azureDetector";
+import { detectAzure, shouldTrigger, extractCommentIntent, getActiveErrors } from "./azureDetector";
 import { buildContext } from "./contextBuilder";
 import { fetchSuggestion } from "./apiService";
 import { logInfo, logWarn } from "./logger";
@@ -13,7 +13,7 @@ export class CodeWatcher {
     private lastSentKey: string = "";
     private backendUrl: string;
     private statusBar: vscode.StatusBarItem;
-    private onSuggestion: (suggestion: string, service: string, isManual: boolean) => void;
+    private onSuggestion: (suggestion: string, service: string, isManual: boolean, triggerLine: string) => void;
 
     // COOLDOWN AFTER ACCEPTANCE
     private lastAcceptedAt: number = 0;
@@ -22,7 +22,7 @@ export class CodeWatcher {
     constructor(
         backendUrl: string,
         statusBar: vscode.StatusBarItem,
-        onSuggestion: (suggestion: string, service: string, isManual: boolean) => void
+        onSuggestion: (suggestion: string, service: string, isManual: boolean, triggerLine: string) => void
     ) {
         this.backendUrl = backendUrl;
         this.statusBar = statusBar;
@@ -33,7 +33,7 @@ export class CodeWatcher {
     public notifyAccepted(): void {
         this.lastAcceptedAt = Date.now();
         this.lastSentKey = ""; // reset so next trigger is fresh
-        console.log("[codeWatcher] ⏸️ Cooldown started after accept");
+        console.log("[codeWatcher] ⏸️ Cooldown started");
     }
 
     public register(context: vscode.ExtensionContext): void {
@@ -69,11 +69,17 @@ export class CodeWatcher {
             return;
         }
 
-        // Debounce
         if (this.debounceTimer) {
             clearTimeout(this.debounceTimer);
         }
-        this.debounceTimer = setTimeout(() => this.processChange(event.document, editor), 200);
+
+        // Copilot-style smart trigger check
+        const position = editor.selection.active;
+        if (!shouldTrigger(event.document, position)) {
+            return; // not a meaningful trigger point
+        }
+
+        this.debounceTimer = setTimeout(() => this.processChange(event.document, editor), 300);
     }
 
     private async processChange(doc: vscode.TextDocument, editor: vscode.TextEditor): Promise<void> {
@@ -89,17 +95,34 @@ export class CodeWatcher {
             linePreview: currentLine.trim().slice(0, 50)
         });
 
-        // e) If NOT detection.isAzure → return
-        if (!detection.isAzure) {
-            logWarn("CodeWatcher", "Skipped: No Azure context detected (imports/keywords/filename)", {
-                line: currentLine.trim(),
-                file: doc.fileName
-            });
-            return;
-        }
-
         // f) buildContext
         const codeContext = buildContext(doc, position, detection);
+
+        // Copilot feature 1 — detect VS Code errors near cursor
+        const activeErrors = getActiveErrors(doc, position);
+        if (activeErrors) {
+            codeContext.activeErrors = activeErrors;
+            console.log("[watcher] 🔴 Errors detected — generating fix");
+        }
+
+        // Copilot feature 2 — detect comment intent
+        const commentIntent = extractCommentIntent(
+            doc.getText().split("\n"),
+            position.line
+        );
+        if (commentIntent.hasIntent) {
+            codeContext.commentAbove = commentIntent.fullPrompt;
+            codeContext.detectedServices = commentIntent.service
+                ? [commentIntent.service]
+                : codeContext.detectedServices;
+            console.log("[watcher] 💬 Comment intent:", commentIntent.action, commentIntent.service);
+        }
+
+        // Copilot feature 3 — always trigger if there are errors
+        // even if not Azure-relevant
+        if (!detection.isAzure && !activeErrors && !commentIntent.hasIntent) {
+            return;
+        }
 
         // g) If codeContext.cacheKey === this.lastSentKey → return
         if (codeContext.cacheKey === this.lastSentKey) {
@@ -125,7 +148,12 @@ export class CodeWatcher {
         if (suggestion) {
             this.statusBar.text = "$(azure) AzureAI: ✓ Ready";
             logInfo("CodeWatcher", "Suggestion received", { length: suggestion.length });
-            this.onSuggestion(suggestion, detection.detectedServices[0] ?? "azure", false);
+            this.onSuggestion(
+                suggestion,
+                codeContext.detectedServices[0] ?? "azure",
+                false,
+                codeContext.currentLine
+            );
         } else {
             // l) Fallback
             this.statusBar.text = "$(azure) AzureAI: Ready";
@@ -161,7 +189,12 @@ export class CodeWatcher {
         if (suggestion) {
             this.statusBar.text = "$(azure) AzureAI: ✓ Ready";
             logInfo("CodeWatcher", "Manual suggestion received", { length: suggestion.length });
-            this.onSuggestion(suggestion, detection.detectedServices[0] ?? "azure", true);
+            this.onSuggestion(
+                suggestion,
+                detection.detectedServices[0] ?? "azure",
+                true,
+                codeContext.currentLine
+            );
         } else {
             this.statusBar.text = "$(azure) AzureAI: Ready";
             logWarn("CodeWatcher", "Manual fetch returned no suggestion");

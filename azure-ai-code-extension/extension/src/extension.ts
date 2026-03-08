@@ -1,9 +1,9 @@
-// ENTRY POINT — extension.ts
+// ENTRY POINT (Copilot Enhanced)
 
 import * as vscode from "vscode";
 console.log("[AzureAI] extension.ts script loading...");
 import { CodeWatcher } from "./codeWatcher";
-import { InlineSuggestionProvider } from "./inlineProvider";
+import { registerInlineProvider } from "./inlineProvider";
 import { logInfo, showDebugLogs, logWarn, logError } from "./logger";
 import { AzureImportFixer } from "./importFixer";
 import { detectAzure } from "./azureDetector";
@@ -14,273 +14,294 @@ import { injectMissingImports } from "./importInjector";
 import { sendFeedback, detectIntent, FeedbackData } from "./feedbackService";
 
 let webviewPanel: vscode.WebviewPanel | undefined;
-let watcher: CodeWatcher;
+let watcherInstance: CodeWatcher | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
-    vscode.window.showInformationMessage("⚡ AzureAI Suggestion Engine — Active (Copilot Mode)");
-    console.log("⚡ AzureAI Code Suggest — activated");
-    showDebugLogs();
-    logInfo("Extension", "Activated", { backendUrl: config.BACKEND_URL });
+  vscode.window.showInformationMessage("⚡ AzureAI Suggestion Engine — Active (Copilot Mode)");
+  console.log("⚡ AzureAI Code Suggest — activated");
+  showDebugLogs();
+  logInfo("Extension", "Activated", { backendUrl: config.BACKEND_URL });
 
-    const inlineSuggestEnabled = vscode.workspace.getConfiguration("editor").get<boolean>("inlineSuggest.enabled");
-    if (!inlineSuggestEnabled) {
-        logWarn("Extension", "editor.inlineSuggest.enabled is false; ghost text may not appear");
-        vscode.window.showWarningMessage(
-            "AzureAI: inline suggestions are disabled (editor.inlineSuggest.enabled=false).",
-            "Enable"
-        ).then(async choice => {
-            if (choice === "Enable") {
-                await vscode.workspace.getConfiguration("editor").update("inlineSuggest.enabled", true, vscode.ConfigurationTarget.Global);
-                vscode.window.showInformationMessage("AzureAI: inline suggestions enabled. Please retry typing.");
-                logInfo("Extension", "Enabled editor.inlineSuggest.enabled via quick action");
-            }
-        });
+  const inlineSuggestEnabled = vscode.workspace.getConfiguration("editor").get<boolean>("inlineSuggest.enabled");
+  if (!inlineSuggestEnabled) {
+    logWarn("Extension", "editor.inlineSuggest.enabled is false; ghost text may not appear");
+    vscode.window.showWarningMessage(
+      "AzureAI: inline suggestions are disabled (editor.inlineSuggest.enabled=false).",
+      "Enable"
+    ).then(async choice => {
+      if (choice === "Enable") {
+        await vscode.workspace.getConfiguration("editor").update("inlineSuggest.enabled", true, vscode.ConfigurationTarget.Global);
+        vscode.window.showInformationMessage("AzureAI: inline suggestions enabled. Please retry typing.");
+        logInfo("Extension", "Enabled editor.inlineSuggest.enabled via quick action");
+      }
+    });
+  }
+
+  // 1. Create status bar item
+  const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+  statusBar.text = "$(azure) AzureAI: Ready";
+  statusBar.tooltip = "AzureAI Code Suggest — Copilot mode active";
+  statusBar.command = "azureai.suggest"; // Manual trigger still opens webview
+  statusBar.show();
+  context.subscriptions.push(statusBar);
+
+  // 2. Register Inline Completion Provider (Copilot Style)
+  registerInlineProvider(context, config.BACKEND_URL);
+  console.log("[extension] ✅ Inline provider registered");
+
+  // 2.5 Register Code Action Provider (Quick Fixes for missing Azure imports)
+  const supportedLanguages = ["typescript", "javascript", "typescriptreact", "javascriptreact", "csharp"];
+  const importFixer = new AzureImportFixer();
+  context.subscriptions.push(
+    vscode.languages.registerCodeActionsProvider(
+      supportedLanguages.map(lang => ({ language: lang })),
+      importFixer,
+      { providedCodeActionKinds: AzureImportFixer.providedCodeActionKinds }
+    )
+  );
+
+  // 3. Create watcher with callback to send suggestions to webview (Dashboard Mode)
+  watcherInstance = new CodeWatcher(
+    config.BACKEND_URL,
+    statusBar,
+    (suggestion, service, isManual, triggerLine) => {
+      sendToWebview(context, suggestion, service, isManual, triggerLine);
+    }
+  );
+  watcherInstance.register(context);
+
+  // 4. Register commands
+  const manualCommand = vscode.commands.registerCommand("azureai.suggest", () => {
+    logInfo("Extension", "Manual suggestion command triggered");
+    watcherInstance?.triggerManually();
+  });
+
+  const showLogsCommand = vscode.commands.registerCommand("azureai.showDebugLogs", () => {
+    showDebugLogs();
+  });
+
+  const debugProbeCommand = vscode.commands.registerCommand("azureai.debugProbe", async () => {
+    showDebugLogs();
+
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      vscode.window.showWarningMessage("AzureAI Debug Probe: No active editor.");
+      logWarn("DebugProbe", "No active editor");
+      return;
     }
 
-    // 1. Create status bar item
-    const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
-    statusBar.text = "$(azure) AzureAI: Ready";
-    statusBar.tooltip = "AzureAI Code Suggest — Copilot mode active";
-    statusBar.command = "azureai.suggest"; // Manual trigger still opens webview
-    statusBar.show();
-    context.subscriptions.push(statusBar);
+    const doc = editor.document;
+    const pos = editor.selection.active;
+    const fullText = doc.getText();
+    const currentLine = doc.lineAt(pos.line).text;
 
-    // 2. Register Inline Completion Provider (Copilot Style)
-    const inlineProvider = new InlineSuggestionProvider(config.BACKEND_URL);
-    const supportedLanguages = ["typescript", "javascript", "typescriptreact", "javascriptreact", "csharp"];
-
-    context.subscriptions.push(
-        vscode.languages.registerInlineCompletionItemProvider(
-            supportedLanguages.map(lang => ({ language: lang })),
-            inlineProvider
-        )
-    );
-
-    // 2.5 Register Code Action Provider (Quick Fixes for missing Azure imports)
-    const importFixer = new AzureImportFixer();
-    context.subscriptions.push(
-        vscode.languages.registerCodeActionsProvider(
-            supportedLanguages.map(lang => ({ language: lang })),
-            importFixer,
-            { providedCodeActionKinds: AzureImportFixer.providedCodeActionKinds }
-        )
-    );
-
-    // 3. Create watcher with callback to send suggestions to webview (Dashboard Mode)
-    watcher = new CodeWatcher(
-        config.BACKEND_URL,
-        statusBar,
-        (suggestion, service, isManual) => {
-            const triggerLine = vscode.window.activeTextEditor ? vscode.window.activeTextEditor.document.lineAt(vscode.window.activeTextEditor.selection.active.line).text : "";
-            sendToWebview(context, suggestion, service, isManual, triggerLine);
-        }
-    );
-    watcher.register(context);
-
-    // 4. Register commands
-    const manualCommand = vscode.commands.registerCommand("azureai.suggest", () => {
-        logInfo("Extension", "Manual suggestion command triggered");
-        watcher.triggerManually();
+    logInfo("DebugProbe", "Starting probe", {
+      file: doc.fileName,
+      language: doc.languageId,
+      cursor: `${pos.line}:${pos.character}`
     });
 
-    const showLogsCommand = vscode.commands.registerCommand("azureai.showDebugLogs", () => {
-        showDebugLogs();
+    const detection = detectAzure(fullText, currentLine, doc.fileName);
+    logInfo("DebugProbe", "Detection result", detection);
+
+    if (!detection.isAzure) {
+      vscode.window.showWarningMessage("AzureAI Debug Probe: No Azure context detected.");
+      logWarn("DebugProbe", "Probe stopped due to non-Azure context");
+      return;
+    }
+
+    const codeContext = buildContext(doc, pos, detection);
+    const suggestion = await fetchSuggestion(codeContext, config.BACKEND_URL);
+
+    if (!suggestion) {
+      vscode.window.showWarningMessage("AzureAI Debug Probe: Request completed but no suggestion returned.");
+      logWarn("DebugProbe", "Probe request returned no suggestion");
+      return;
+    }
+
+    logInfo("DebugProbe", "Probe success", {
+      suggestionLength: suggestion.length,
+      preview: suggestion.slice(0, 120)
     });
+    vscode.window.showInformationMessage("AzureAI Debug Probe: Suggestion received. Check 'AzureAI Debug' output.");
+  });
 
-    const debugProbeCommand = vscode.commands.registerCommand("azureai.debugProbe", async () => {
-        showDebugLogs();
+  const acceptCommand = vscode.commands.registerCommand("azureai.acceptSuggestion", (suggestion: string, service: string) => {
+    console.log(`[extension] ✓ Suggestion accepted for ${service}`);
 
-        const editor = vscode.window.activeTextEditor;
-        if (!editor) {
-            vscode.window.showWarningMessage("AzureAI Debug Probe: No active editor.");
-            logWarn("DebugProbe", "No active editor");
-            return;
-        }
+    if (typeof suggestion === "string" && suggestion.trim().length > 0) {
+      markAsAccepted(suggestion);
+    }
 
-        const doc = editor.document;
-        const pos = editor.selection.active;
-        const fullText = doc.getText();
-        const currentLine = doc.lineAt(pos.line).text;
+    watcherInstance?.notifyAccepted();
 
-        logInfo("DebugProbe", "Starting probe", {
-            file: doc.fileName,
-            language: doc.languageId,
-            cursor: `${pos.line}:${pos.character}`
-        });
+    // Automate import injection
+    const editor = vscode.window.activeTextEditor;
+    if (editor) {
+      const triggerLine = editor.document.lineAt(editor.selection.active.line).text;
 
-        const detection = detectAzure(fullText, currentLine, doc.fileName);
-        logInfo("DebugProbe", "Detection result", detection);
+      injectMissingImports(editor.document, suggestion).catch(err => {
+        logError("Extension", "Failed to inject missing imports automatically", { error: err.message });
+      });
 
-        if (!detection.isAzure) {
-            vscode.window.showWarningMessage("AzureAI Debug Probe: No Azure context detected.");
-            logWarn("DebugProbe", "Probe stopped due to non-Azure context");
-            return;
-        }
+      const lastLine = Math.max(0, editor.document.lineCount - 1);
+      const lastChar = editor.document.lineAt(lastLine).text.length;
+      const endPos = new vscode.Position(lastLine, lastChar);
+      editor.selection = new vscode.Selection(endPos, endPos);
+      editor.revealRange(new vscode.Range(endPos, endPos), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
 
-        const codeContext = buildContext(doc, pos, detection);
-        const suggestion = await fetchSuggestion(codeContext, config.BACKEND_URL);
+      promptInlineFeedback(suggestion, service, triggerLine);
+    }
+  });
 
-        if (!suggestion) {
-            vscode.window.showWarningMessage("AzureAI Debug Probe: Request completed but no suggestion returned.");
-            logWarn("DebugProbe", "Probe request returned no suggestion");
-            return;
-        }
-
-        logInfo("DebugProbe", "Probe success", {
-            suggestionLength: suggestion.length,
-            preview: suggestion.slice(0, 120)
-        });
-        vscode.window.showInformationMessage("AzureAI Debug Probe: Suggestion received. Check 'AzureAI Debug' output.");
-    });
-
-    const acceptCommand = vscode.commands.registerCommand("azureai.acceptSuggestion", (suggestion: string, service: string) => {
-        console.log(`[extension] ✓ Suggestion accepted for ${service}`);
-
-        if (typeof suggestion === "string" && suggestion.trim().length > 0) {
-            markAsAccepted(suggestion);
-        }
-
-        watcher.notifyAccepted();
-
-        // Automate import injection
-        const editor = vscode.window.activeTextEditor;
-        if (editor) {
-            injectMissingImports(editor.document, suggestion).catch(err => {
-                logError("Extension", "Failed to inject missing imports automatically", { error: err.message });
-            });
-
-            const lastLine = Math.max(0, editor.document.lineCount - 1);
-            const lastChar = editor.document.lineAt(lastLine).text.length;
-            const endPos = new vscode.Position(lastLine, lastChar);
-            editor.selection = new vscode.Selection(endPos, endPos);
-            editor.revealRange(new vscode.Range(endPos, endPos), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
-        }
-    });
-
-    context.subscriptions.push(manualCommand, acceptCommand, showLogsCommand, debugProbeCommand);
+  context.subscriptions.push(manualCommand, acceptCommand, showLogsCommand, debugProbeCommand);
 }
 
 function getSdkType(service: string): string {
-    const sdkMap: Record<string, string> = {
-        "blob-storage": "@azure/storage-blob",
-        "cosmos-db": "@azure/cosmos",
-        "key-vault": "@azure/keyvault-secrets",
-        "azure-identity": "@azure/identity",
-        "service-bus": "@azure/service-bus",
-        "event-hubs": "@azure/event-hubs",
-        "cognitive-services": "@azure/ai-text-analytics",
-    }
-    return sdkMap[service] ?? "@azure/unknown"
+  const sdkMap: Record<string, string> = {
+    "blob-storage": "@azure/storage-blob",
+    "cosmos-db": "@azure/cosmos",
+    "key-vault": "@azure/keyvault-secrets",
+    "azure-identity": "@azure/identity",
+    "service-bus": "@azure/service-bus",
+    "event-hubs": "@azure/event-hubs",
+    "cognitive-services": "@azure/ai-text-analytics",
+  }
+  return sdkMap[service] ?? "@azure/unknown"
 }
 
-function sendToWebview(context: vscode.ExtensionContext, suggestion: string, service: string, reveal: boolean = false, triggerLine?: string) {
-    // If panel already exists, just send message
-    if (webviewPanel) {
-        logInfo("Extension", "DATA FLOW STEP 2 (DASHBOARD): Sending result to Webview panel", {
-            service,
-            suggestionPreview: suggestion.slice(0, 50) + "..."
-        });
-        webviewPanel.webview.postMessage({
-            type: "suggestion",
-            suggestion,
-            service,
-            sdkType: getSdkType(service),
-            intent: detectIntent(triggerLine ?? "", service),
-            triggerLine: triggerLine ?? ""
-        });
-        if (reveal) {
-            webviewPanel.reveal(vscode.ViewColumn.Beside, true);
-        }
-        console.log("[extension] 📨 Message sent to existing panel");
-        return;
+function promptInlineFeedback(suggestion: string, service: string, triggerLine?: string): void {
+  const feedbackData: FeedbackData = {
+    suggestion,
+    rating: "positive",
+    sdkType: getSdkType(service),
+    intent: detectIntent(triggerLine ?? "", service)
+  };
+
+  vscode.window.showInformationMessage(
+    "Was this suggestion helpful?",
+    "👍 Helpful",
+    "👎 Not Helpful"
+  ).then(choice => {
+    if (!choice) return;
+
+    feedbackData.rating = choice === "👍 Helpful" ? "positive" : "negative";
+    sendFeedback(feedbackData, config.BACKEND_URL).then(success => {
+      if (success) {
+        vscode.window.setStatusBarMessage("$(check) AzureAI: Feedback received", 2500);
+      }
+    });
+  });
+}
+
+function sendToWebview(context: vscode.ExtensionContext, suggestion: string, service: string, reveal: boolean = false, triggerLine: string = "") {
+  // If panel already exists, just send message
+  if (webviewPanel) {
+    logInfo("Extension", "DATA FLOW STEP 2 (DASHBOARD): Sending result to Webview panel", {
+      service,
+      suggestionPreview: suggestion.slice(0, 50) + "..."
+    });
+    webviewPanel.webview.postMessage({
+      type: "suggestion",
+      suggestion,
+      service,
+      sdkType: getSdkType(service),
+      intent: detectIntent(triggerLine, service),
+      triggerLine
+    });
+    if (reveal) {
+      webviewPanel.reveal(vscode.ViewColumn.Beside, true);
+    }
+    console.log("[extension] 📨 Message sent to existing panel");
+    return;
+  }
+
+  if (!reveal) return; // Don't create panel automatically anymore — stay silent like Copilot
+
+  // Create new webview panel
+  webviewPanel = vscode.window.createWebviewPanel(
+    "azureAISuggest",
+    "⚡ AzureAI Suggest",
+    vscode.ViewColumn.Beside,
+    {
+      enableScripts: true,
+      retainContextWhenHidden: true
+    }
+  );
+
+  // Clean up when panel is disposed
+  webviewPanel.onDidDispose(() => {
+    webviewPanel = undefined;
+  });
+
+  // Set HTML content
+  webviewPanel.webview.html = getWebviewContent();
+
+  // Handle messages from webview
+  webviewPanel.webview.onDidReceiveMessage(msg => {
+    if (msg.type === "accept") {
+      const editor = vscode.window.activeTextEditor;
+      if (editor) {
+        editor.insertSnippet(
+          new vscode.SnippetString(msg.suggestion),
+          editor.selection.active
+        );
+
+        // NOTIFY TRACKERS ON ACCEPT
+        markAsAccepted(msg.suggestion);
+        watcherInstance?.notifyAccepted();
+
+        console.log("[extension] ✅ Accepted and trackers notified");
+        vscode.window.showInformationMessage("✓ Azure snippet inserted!");
+      }
     }
 
-    if (!reveal) return; // Don't create panel automatically anymore — stay silent like Copilot
+    if (msg.type === "reject") {
+      webviewPanel?.dispose();
+    }
 
-    // Create new webview panel
-    webviewPanel = vscode.window.createWebviewPanel(
-        "azureAISuggest",
-        "⚡ AzureAI Suggest",
-        vscode.ViewColumn.Beside,
-        {
-            enableScripts: true,
-            retainContextWhenHidden: true
+    if (msg.type === "retry" || msg.type === "fetch") {
+      logInfo("Extension", "Manual fetch requested from webview");
+      watcherInstance?.triggerManually();
+    }
+
+    if (msg.type === "feedback") {
+      const feedbackData: FeedbackData = {
+        suggestion: msg.suggestion,
+        rating: msg.rating,           // "positive" or "negative"
+        sdkType: msg.sdkType,
+        intent: msg.intent
+      };
+
+      sendFeedback(feedbackData, config.BACKEND_URL).then(success => {
+        if (success) {
+          vscode.window.setStatusBarMessage(
+            "$(check) AzureAI: Feedback received — thanks!",
+            3000   // disappears after 3 seconds
+          );
         }
-    );
+      });
 
-    // Clean up when panel is disposed
-    webviewPanel.onDidDispose(() => {
-        webviewPanel = undefined;
+      console.log("[extension] ⭐ Feedback received:", msg.rating, msg.sdkType);
+    }
+  });
+
+  console.log("[extension] 🪟 New webview panel created");
+  // Wait a bit for webview to load before sending the first message
+  setTimeout(() => {
+    webviewPanel?.webview.postMessage({
+      type: "suggestion",
+      suggestion,
+      service,
+      sdkType: getSdkType(service),
+      intent: detectIntent(triggerLine, service),
+      triggerLine
     });
-
-    // Set HTML content
-    webviewPanel.webview.html = getWebviewContent();
-
-    // Handle messages from webview
-    webviewPanel.webview.onDidReceiveMessage(msg => {
-        if (msg.type === "accept") {
-            const editor = vscode.window.activeTextEditor;
-            if (editor) {
-                editor.insertSnippet(
-                    new vscode.SnippetString(msg.suggestion),
-                    editor.selection.active
-                );
-
-                // NOTIFY TRACKERS ON ACCEPT
-                markAsAccepted(msg.suggestion);
-                watcher.notifyAccepted();
-
-                console.log("[extension] ✅ Accepted and trackers notified");
-                vscode.window.showInformationMessage("✓ Azure snippet inserted!");
-            }
-        }
-
-        if (msg.type === "reject") {
-            webviewPanel?.dispose();
-        }
-
-        if (msg.type === "retry" || msg.type === "fetch") {
-            logInfo("Extension", "Manual fetch requested from webview");
-            watcher.triggerManually();
-        }
-
-        if (msg.type === "feedback") {
-            const feedbackData: FeedbackData = {
-                suggestion: msg.suggestion,
-                rating: msg.rating,           // "positive" or "negative"
-                sdkType: msg.sdkType,
-                intent: msg.intent
-            };
-
-            sendFeedback(feedbackData, config.BACKEND_URL).then(success => {
-                if (success) {
-                    vscode.window.setStatusBarMessage(
-                        "$(check) AzureAI: Feedback received — thanks!",
-                        3000   // disappears after 3 seconds
-                    );
-                }
-            });
-
-            console.log("[extension] ⭐ Feedback received:", msg.rating, msg.sdkType);
-        }
-    });
-
-    console.log("[extension] 🪟 New webview panel created");
-    // Wait a bit for webview to load before sending the first message
-    setTimeout(() => {
-        webviewPanel?.webview.postMessage({
-            type: "suggestion",
-            suggestion,
-            service,
-            sdkType: getSdkType(service),
-            intent: detectIntent(triggerLine ?? "", service),
-            triggerLine: triggerLine ?? ""
-        });
-    }, 1000);
+  }, 1000);
 }
 
 function getWebviewContent() {
-    return `
+  return `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -510,7 +531,7 @@ function getWebviewContent() {
 }
 
 export function deactivate() {
-    webviewPanel?.dispose();
-    logInfo("Extension", "Deactivated");
-    console.log("⚡ AzureAI deactivated");
+  webviewPanel?.dispose();
+  logInfo("Extension", "Deactivated");
+  console.log("⚡ AzureAI deactivated");
 }

@@ -158,15 +158,18 @@ export async function fetchSuggestion(
     }
 
 
-    // Debug phase: bypass session cache so every keystroke makes a fresh backend request.
+    const effectiveKey = context.activeErrors
+        ? "error:" + context.cacheKey
+        : context.cacheKey;
+
     // Debug phase: bypass session cache so every keystroke makes a fresh backend request.
     // Cache has been disabled per user request.
     /*
     if (!config.DEBUG_DISABLE_SESSION_CACHE) {
-        const cached = getCached(context.cacheKey);
+        const cached = getCached(effectiveKey);
         if (cached) {
             logInfo("ApiService", "Session cache hit", {
-                cacheKey: context.cacheKey,
+                cacheKey: effectiveKey,
                 suggestionLength: cached.length
             });
             return cached;
@@ -177,13 +180,22 @@ export async function fetchSuggestion(
     // Prepare full payload for the backend
     const payload = {
         language: context.language,
+        fileName: context.fileNameHint,
         imports: context.imports,
         currentLine: context.currentLine,
-        context: context.previousCode,
-        cursorPosition: {
-            line: context.cursorLine,
-            character: context.cursorChar
-        }
+        detectedServices: context.detectedServices,
+
+        // Copilot-style context — send everything
+        previousCode: context.previousCode,      // 60 lines above
+        codeAfterCursor: context.codeAfterCursor,   // 10 lines below
+        allVariables: context.allVariables,      // variable names
+        allFunctions: context.allFunctions,      // function names
+        commentAbove: context.commentAbove,      // comment intent
+        openFilesContext: context.openFilesContext,  // other open tabs
+        activeErrors: context.activeErrors,      // VS Code errors
+
+        // System instructions — tell AI exactly what to do
+        systemInstructions: buildSystemPrompt(context)
     };
 
     const normalizedBase = normalizeBackendBaseUrl(backendUrl || config.BACKEND_URL);
@@ -196,9 +208,8 @@ export async function fetchSuggestion(
             imports: payload.imports,
             detectedServices: context.detectedServices,
             currentLinePreview: payload.currentLine.trim().slice(0, 100),
-            previousCodeLength: payload.context.length,
-            cursorPosition: payload.cursorPosition,
-            cacheKey: context.cacheKey
+            previousCodeLength: payload.previousCode.length,
+            cacheKey: effectiveKey
         }
     });
 
@@ -212,7 +223,7 @@ export async function fetchSuggestion(
         if (suggestion) {
             const cleaned = cleanSuggestion(suggestion);
             if (!config.DEBUG_DISABLE_SESSION_CACHE) {
-                setCache(context.cacheKey, cleaned);
+                setCache(effectiveKey, cleaned);
             }
             logInfo("ApiService", "DATA FLOW STEP 1: Backend response received by Extension logic", {
                 latencyMs: Date.now() - startedAt,
@@ -258,4 +269,39 @@ export async function fetchSuggestion(
 
         return null;
     }
+}
+
+function buildSystemPrompt(context: CodeContext): string {
+    if (context.activeErrors) {
+        return `You are an Azure SDK expert. Fix these errors in the code:
+${context.activeErrors}
+Language: ${context.language}
+Use DefaultAzureCredential. Return only fixed code.`;
+    }
+
+    if (context.commentAbove && context.commentAbove.length > 0) {
+        return `You are an Azure SDK expert. 
+Generate code for this task: ${context.commentAbove}
+Service: ${context.detectedServices[0] || 'azure'}
+Language: ${context.language}
+Variables available: ${context.allVariables.slice(0, 10).join(', ')}
+Rules:
+- Use DefaultAzureCredential never connection strings
+- Include try/catch error handling
+- Match the coding style of the existing code
+- Return only working code`;
+    }
+
+    return `You are an Azure SDK expert providing inline code completion.
+Complete the code at the cursor position.
+Service: ${context.detectedServices[0] || 'azure'}
+Language: ${context.language}
+File: ${context.fileNameHint}
+Existing variables: ${context.allVariables.slice(0, 10).join(', ')}
+Rules:
+- Complete naturally from where cursor is
+- Use DefaultAzureCredential
+- Match existing code style
+- Return only the completion code
+- Maximum 15 lines`;
 }

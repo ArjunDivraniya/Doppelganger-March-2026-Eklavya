@@ -1,4 +1,7 @@
-// PHASE 1 — AZURE DETECTOR
+// PHASE 1 — AZURE DETECTOR (Copilot Enhanced)
+
+import * as vscode from "vscode";
+
 
 export const AZURE_SDK_MAP: Record<string, string> = {
     // JS/TS imports
@@ -142,3 +145,123 @@ export function detectAzure(
         detectedImports
     };
 }
+
+// ── ADD 1: Smart Trigger Detection ──────────────────────────────────────────
+
+function isInsideString(text: string): boolean {
+    let inString = false;
+    let quoteChar = '';
+    for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        if (text[i - 1] === '\\') continue; // escape char
+        if (!inString && (char === '"' || char === "'" || char === "`")) {
+            inString = true;
+            quoteChar = char;
+        } else if (inString && char === quoteChar) {
+            inString = false;
+            quoteChar = '';
+        }
+    }
+    return inString;
+}
+
+export function shouldTrigger(
+    document: vscode.TextDocument,
+    position: vscode.Position
+): boolean {
+    const lineText = document.lineAt(position.line).text;
+    const textBeforeCursor = lineText.slice(0, position.character);
+    const textAfterCursor = lineText.slice(position.character).trim();
+
+    if (textBeforeCursor.trim().length < 3) return false;
+    if (textAfterCursor.length > 0) return false;
+
+    const trimmedBefore = textBeforeCursor.trim();
+    const lastChar = trimmedBefore[trimmedBefore.length - 1];
+    if (!/[a-zA-Z0-9_\.\(\{]/.test(lastChar)) return false;
+
+    if (isInsideString(textBeforeCursor)) return false;
+
+    return true;
+}
+
+// ── ADD 2: Comment Intent Extractor ─────────────────────────────────────────
+
+export interface CommentIntent {
+    hasIntent: boolean;
+    rawComment: string;
+    action: string;
+    service: string;
+    fullPrompt: string;
+}
+
+export function extractCommentIntent(
+    lines: string[],
+    cursorLine: number
+): CommentIntent {
+    const commentLines: string[] = [];
+
+    // Look at lines from cursorLine-1 down to cursorLine-3
+    for (let i = cursorLine - 1; i >= Math.max(0, cursorLine - 3); i--) {
+        if (!lines[i]) continue;
+        const line = lines[i].trim();
+        if (line.startsWith("//")) {
+            commentLines.unshift(line.replace(/^\/\/\s*/, "").trim());
+        }
+    }
+
+    const rawComment = commentLines.join(" ");
+    const lowerComment = rawComment.toLowerCase();
+
+    // Detect Action
+    let action = "general";
+    if (lowerComment.match(/upload|send|write|create|add|insert/)) action = "upload";
+    else if (lowerComment.match(/download|read|get|fetch|retrieve|query|list/)) action = "fetch";
+    else if (lowerComment.match(/delete|remove|drop/)) action = "delete";
+    else if (lowerComment.match(/auth|login|connect|credential/)) action = "authenticate";
+    else if (lowerComment.match(/update|edit|modify|patch/)) action = "update";
+
+    // Detect Service
+    let service = "azure-identity"; // fallback
+    if (lowerComment.match(/blob|storage|file|container/)) service = "blob-storage";
+    else if (lowerComment.match(/cosmos|database|document/)) service = "cosmos-db";
+    else if (lowerComment.match(/keyvault|secret/)) service = "key-vault";
+    else if (lowerComment.match(/service.?bus|queue|message/)) service = "service-bus";
+    else if (lowerComment.match(/event.?hub|stream/)) service = "event-hubs";
+    else if (lowerComment.match(/identity|credential|auth/)) service = "azure-identity";
+
+    const fullPrompt = `Generate TypeScript/C# Azure SDK code for this task:
+${rawComment}
+Service: ${service}
+Action: ${action}
+Rules:
+- Use DefaultAzureCredential never connection strings
+- Include try/catch error handling
+- Add brief inline comments
+- Return only working code no explanation`;
+
+    return {
+        hasIntent: commentLines.length > 0,
+        rawComment,
+        action,
+        service,
+        fullPrompt
+    };
+}
+
+// ── ADD 3: Error Extractor ──────────────────────────────────────────────────
+
+export function getActiveErrors(
+    document: vscode.TextDocument,
+    position: vscode.Position
+): string {
+    const diagnostics = vscode.languages.getDiagnostics(document.uri);
+    const errors = diagnostics.filter(d => d.severity === vscode.DiagnosticSeverity.Error);
+
+    const nearbyErrors = errors.filter(d => Math.abs(d.range.start.line - position.line) <= 5);
+
+    if (nearbyErrors.length === 0) return "";
+
+    return nearbyErrors.map(d => `Line ${d.range.start.line + 1}: ${d.message}`).join("\n");
+}
+
