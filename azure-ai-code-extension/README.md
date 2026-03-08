@@ -240,27 +240,7 @@ See `azure-ai-code-extension/extension/LICENSE`.
 
 ---
 
-## 🔮 Future Roadmap
 
-Completed:
-
-- [x] Real-time Azure SDK detection
-- [x] Context extraction (imports, cursor, previous 20 lines)
-- [x] Mock mode for offline development
-- [x] Sidebar webview UI with accept/reject
-- [x] Session caching to reduce API calls
-- [x] Star rating feedback system
-- [x] Multi-language support (TypeScript + C#)
-
-Planned:
-
-- [ ] GitHub Copilot Chat integration
-- [ ] Azure Bicep / ARM template suggestions
-- [ ] Support for Python Azure SDK
-- [ ] Auto-detect security vulnerabilities in Azure code
-- [ ] VS Code Marketplace public release
-- [ ] Fine-tune model on collected feedback data
-- [ ] Support for React Native + Azure Mobile SDK
 
 ---
 
