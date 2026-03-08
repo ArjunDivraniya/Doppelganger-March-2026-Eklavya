@@ -6,8 +6,12 @@
             "type": "extensionHost",
             "request": "launch",
             "runtimeExecutable": "${execPath}",
+            "env": {
+                "BACKEND_URL": "http://localhost:3005"
+            },
             "args": [
-                "--extensionDevelopmentPath=${workspaceFolder}"
+                "--extensionDevelopmentPath=${workspaceFolder}",
+                "--disable-extensions"
             ],
             "outFiles": [
                 "${workspaceFolder}/out/**/*.js"

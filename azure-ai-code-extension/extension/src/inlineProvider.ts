@@ -4,6 +4,7 @@ import * as vscode from "vscode";
 import { detectAzure } from "./azureDetector";
 import { buildContext } from "./contextBuilder";
 import { fetchSuggestion } from "./apiService";
+import { logError, logInfo, logWarn } from "./logger";
 
 const SUPPORTED_LANGUAGES = ["typescript", "javascript", "typescriptreact", "javascriptreact", "csharp"];
 
@@ -20,11 +21,15 @@ export class InlineSuggestionProvider implements vscode.InlineCompletionItemProv
         context: vscode.InlineCompletionContext,
         token: vscode.CancellationToken
     ): Promise<vscode.InlineCompletionList | vscode.InlineCompletionItem[] | undefined> {
-
-        console.log(`[InlineProvider] 🔍 Checking: ${document.languageId} at ${position.line}:${position.character}`);
+        logInfo("InlineProvider", "Completion requested", {
+            language: document.languageId,
+            position: `${position.line}:${position.character}`,
+            triggerKind: context.triggerKind
+        });
 
         // 1. Guard for supported languages
         if (!SUPPORTED_LANGUAGES.includes(document.languageId)) {
+            logWarn("InlineProvider", "Ignored unsupported language", { language: document.languageId });
             return undefined;
         }
 
@@ -33,9 +38,16 @@ export class InlineSuggestionProvider implements vscode.InlineCompletionItemProv
         const currentLine = document.lineAt(position.line).text;
         const detection = detectAzure(fullText, currentLine, document.fileName);
 
-        console.log(`[InlineProvider] 🛡️ isAzure: ${detection.isAzure}, Services: ${detection.detectedServices.join(",")}`);
+        logInfo("InlineProvider", "Azure detection result", {
+            isAzure: detection.isAzure,
+            services: detection.detectedServices,
+            imports: detection.detectedImports
+        });
 
-        if (!detection.isAzure) return undefined;
+        if (!detection.isAzure) {
+            logWarn("InlineProvider", "Skipped non-Azure context");
+            return undefined;
+        }
 
         // 3. Build context for API
         const codeContext = buildContext(document, position, detection);
@@ -43,10 +55,21 @@ export class InlineSuggestionProvider implements vscode.InlineCompletionItemProv
         // 4. Fetch suggestion (Mock or Real)
         try {
             const suggestion = await fetchSuggestion(codeContext, this.backendUrl);
+            logInfo("InlineProvider", "Fetch completed", {
+                hasSuggestion: !!suggestion,
+                suggestionLength: suggestion?.length ?? 0,
+                cancelled: token.isCancellationRequested
+            });
 
-            console.log(`[InlineProvider] 💡 Fetched: ${suggestion ? "YES" : "NO"}`);
+            if (!suggestion) {
+                logWarn("InlineProvider", "No suggestion returned by API layer");
+                return undefined;
+            }
 
-            if (!suggestion || token.isCancellationRequested) return undefined;
+            if (token.isCancellationRequested) {
+                logWarn("InlineProvider", "Request cancelled before rendering");
+                return undefined;
+            }
 
             // 5. Create Inline Completion Item
             // We use the current position to provide the ghost text
@@ -62,9 +85,15 @@ export class InlineSuggestionProvider implements vscode.InlineCompletionItemProv
                 arguments: [suggestion, detection.detectedServices[0]]
             };
 
+            logInfo("InlineProvider", "Inline item prepared", {
+                preview: suggestion.slice(0, 100)
+            });
+
             return [item];
         } catch (error) {
-            console.error("[InlineProvider] ❌ Error fetching suggestion:", error);
+            logError("InlineProvider", "Error fetching suggestion", {
+                message: error instanceof Error ? error.message : String(error)
+            });
             return undefined;
         }
     }

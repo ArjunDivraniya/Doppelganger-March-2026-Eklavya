@@ -4,6 +4,7 @@ import * as vscode from "vscode";
 import { detectAzure } from "./azureDetector";
 import { buildContext } from "./contextBuilder";
 import { fetchSuggestion } from "./apiService";
+import { logInfo, logWarn } from "./logger";
 
 const SUPPORTED_LANGUAGES = ["typescript", "javascript", "typescriptreact", "javascriptreact", "csharp"];
 
@@ -27,19 +28,27 @@ export class CodeWatcher {
     public register(context: vscode.ExtensionContext): void {
         const disposable = vscode.workspace.onDidChangeTextDocument(event => this.handleChange(event));
         context.subscriptions.push(disposable);
-        console.log("[codeWatcher] ✅ Registered");
+        logInfo("CodeWatcher", "Registered text change listener");
     }
 
     private handleChange(event: vscode.TextDocumentChangeEvent): void {
         const editor = vscode.window.activeTextEditor;
 
         // Guards
-        if (!editor) return;
-        if (editor.document !== event.document) return;
-        if (!SUPPORTED_LANGUAGES.includes(event.document.languageId)) return;
+        if (!editor) {
+            return;
+        }
+        if (editor.document !== event.document) {
+            return;
+        }
+        if (!SUPPORTED_LANGUAGES.includes(event.document.languageId)) {
+            return;
+        }
 
         const change = event.contentChanges[0];
-        if (!change || change.text.length < 1) return;
+        if (!change || change.text.length < 1) {
+            return;
+        }
 
         // Debounce
         if (this.debounceTimer) {
@@ -55,21 +64,35 @@ export class CodeWatcher {
 
         // d) detectAzure
         const detection = detectAzure(fullText, currentLine, doc.fileName);
+        logInfo("CodeWatcher", "Azure detection for typing event", {
+            isAzure: detection.isAzure,
+            services: detection.detectedServices
+        });
 
         // e) If NOT detection.isAzure → return
-        if (!detection.isAzure) return;
+        if (!detection.isAzure) {
+            logWarn("CodeWatcher", "Skipped non-Azure typing event");
+            return;
+        }
 
         // f) buildContext
         const codeContext = buildContext(doc, position, detection);
 
         // g) If codeContext.cacheKey === this.lastSentKey → return
-        if (codeContext.cacheKey === this.lastSentKey) return;
+        if (codeContext.cacheKey === this.lastSentKey) {
+            logInfo("CodeWatcher", "Skipped duplicate cacheKey", { cacheKey: codeContext.cacheKey });
+            return;
+        }
 
         // h) Update last sent key
         this.lastSentKey = codeContext.cacheKey;
 
         // i) status bar feedback
         this.statusBar.text = "$(sync~spin) AzureAI: Analyzing...";
+        logInfo("CodeWatcher", "Fetching suggestion", {
+            cacheKey: codeContext.cacheKey,
+            backendUrl: this.backendUrl
+        });
 
         // j) fetchSuggestion
         const suggestion = await fetchSuggestion(codeContext, this.backendUrl);
@@ -77,10 +100,12 @@ export class CodeWatcher {
         // k) Result handling
         if (suggestion) {
             this.statusBar.text = "$(azure) AzureAI: ✓ Ready";
+            logInfo("CodeWatcher", "Suggestion received", { length: suggestion.length });
             this.onSuggestion(suggestion, detection.detectedServices[0] ?? "azure", false);
         } else {
             // l) Fallback
             this.statusBar.text = "$(azure) AzureAI: Ready";
+            logWarn("CodeWatcher", "No suggestion for typing event");
         }
     }
 
@@ -95,6 +120,7 @@ export class CodeWatcher {
 
         const detection = detectAzure(fullText, currentLine, doc.fileName);
         if (!detection.isAzure) {
+            logWarn("CodeWatcher", "Manual trigger without Azure context");
             vscode.window.showWarningMessage("AzureAI: No Azure context detected.");
             return;
         }
@@ -102,13 +128,19 @@ export class CodeWatcher {
         const codeContext = buildContext(doc, position, detection);
 
         this.statusBar.text = "$(sync~spin) AzureAI: Analyzing...";
+        logInfo("CodeWatcher", "Manual fetch started", {
+            cacheKey: codeContext.cacheKey,
+            backendUrl: this.backendUrl
+        });
         const suggestion = await fetchSuggestion(codeContext, this.backendUrl);
 
         if (suggestion) {
             this.statusBar.text = "$(azure) AzureAI: ✓ Ready";
+            logInfo("CodeWatcher", "Manual suggestion received", { length: suggestion.length });
             this.onSuggestion(suggestion, detection.detectedServices[0] ?? "azure", true);
         } else {
             this.statusBar.text = "$(azure) AzureAI: Ready";
+            logWarn("CodeWatcher", "Manual fetch returned no suggestion");
             vscode.window.showWarningMessage("AzureAI: No suggestion found.");
         }
     }

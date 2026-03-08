@@ -2,6 +2,7 @@
 
 import * as vscode from "vscode";
 import { DetectionResult } from "./azureDetector";
+import { logInfo } from "./logger";
 
 export interface CodeContext {
     language: string;
@@ -39,7 +40,7 @@ export function buildContext(
     ].join(":");
 
     // f) Return full CodeContext object
-    return {
+    const context: CodeContext = {
         language: document.languageId,
         fileName: document.fileName,
         imports: detection.detectedImports,
@@ -50,4 +51,17 @@ export function buildContext(
         cursorChar: position.character,
         cacheKey: cacheKey
     };
+
+    logInfo("ContextBuilder", "Context built", {
+        file: context.fileName,
+        language: context.language,
+        importsCount: context.imports.length,
+        services: context.detectedServices,
+        cursor: `${context.cursorLine}:${context.cursorChar}`,
+        currentLinePreview: context.currentLine.trim().slice(0, 100),
+        previousCodeLength: context.previousCode.length,
+        cacheKey: context.cacheKey
+    });
+
+    return context;
 }

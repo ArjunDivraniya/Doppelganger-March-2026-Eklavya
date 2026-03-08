@@ -4,6 +4,10 @@ import * as vscode from "vscode";
 console.log("[AzureAI] extension.ts script loading...");
 import { CodeWatcher } from "./codeWatcher";
 import { InlineSuggestionProvider } from "./inlineProvider";
+import { logInfo, showDebugLogs, logWarn } from "./logger";
+import { detectAzure } from "./azureDetector";
+import { buildContext } from "./contextBuilder";
+import { fetchSuggestion } from "./apiService";
 
 const BACKEND_URL = process.env.BACKEND_URL ?? "https://demo-backend.azurewebsites.net";
 
@@ -12,6 +16,23 @@ let webviewPanel: vscode.WebviewPanel | undefined;
 export function activate(context: vscode.ExtensionContext) {
     vscode.window.showInformationMessage("⚡ AzureAI Suggestion Engine — Active (Copilot Mode)");
     console.log("⚡ AzureAI Code Suggest — activated");
+    showDebugLogs();
+    logInfo("Extension", "Activated", { backendUrl: BACKEND_URL });
+
+    const inlineSuggestEnabled = vscode.workspace.getConfiguration("editor").get<boolean>("inlineSuggest.enabled");
+    if (!inlineSuggestEnabled) {
+        logWarn("Extension", "editor.inlineSuggest.enabled is false; ghost text may not appear");
+        vscode.window.showWarningMessage(
+            "AzureAI: inline suggestions are disabled (editor.inlineSuggest.enabled=false).",
+            "Enable"
+        ).then(async choice => {
+            if (choice === "Enable") {
+                await vscode.workspace.getConfiguration("editor").update("inlineSuggest.enabled", true, vscode.ConfigurationTarget.Global);
+                vscode.window.showInformationMessage("AzureAI: inline suggestions enabled. Please retry typing.");
+                logInfo("Extension", "Enabled editor.inlineSuggest.enabled via quick action");
+            }
+        });
+    }
 
     // 1. Create status bar item
     const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
@@ -42,7 +63,58 @@ export function activate(context: vscode.ExtensionContext) {
 
     // 4. Register commands
     const manualCommand = vscode.commands.registerCommand("azureai.suggest", () => {
+        logInfo("Extension", "Manual suggestion command triggered");
         watcher.triggerManually();
+    });
+
+    const showLogsCommand = vscode.commands.registerCommand("azureai.showDebugLogs", () => {
+        showDebugLogs();
+    });
+
+    const debugProbeCommand = vscode.commands.registerCommand("azureai.debugProbe", async () => {
+        showDebugLogs();
+
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+            vscode.window.showWarningMessage("AzureAI Debug Probe: No active editor.");
+            logWarn("DebugProbe", "No active editor");
+            return;
+        }
+
+        const doc = editor.document;
+        const pos = editor.selection.active;
+        const fullText = doc.getText();
+        const currentLine = doc.lineAt(pos.line).text;
+
+        logInfo("DebugProbe", "Starting probe", {
+            file: doc.fileName,
+            language: doc.languageId,
+            cursor: `${pos.line}:${pos.character}`
+        });
+
+        const detection = detectAzure(fullText, currentLine, doc.fileName);
+        logInfo("DebugProbe", "Detection result", detection);
+
+        if (!detection.isAzure) {
+            vscode.window.showWarningMessage("AzureAI Debug Probe: No Azure context detected.");
+            logWarn("DebugProbe", "Probe stopped due to non-Azure context");
+            return;
+        }
+
+        const codeContext = buildContext(doc, pos, detection);
+        const suggestion = await fetchSuggestion(codeContext, BACKEND_URL);
+
+        if (!suggestion) {
+            vscode.window.showWarningMessage("AzureAI Debug Probe: Request completed but no suggestion returned.");
+            logWarn("DebugProbe", "Probe request returned no suggestion");
+            return;
+        }
+
+        logInfo("DebugProbe", "Probe success", {
+            suggestionLength: suggestion.length,
+            preview: suggestion.slice(0, 120)
+        });
+        vscode.window.showInformationMessage("AzureAI Debug Probe: Suggestion received. Check 'AzureAI Debug' output.");
     });
 
     const acceptCommand = vscode.commands.registerCommand("azureai.acceptSuggestion", (suggestion, service) => {
@@ -50,7 +122,7 @@ export function activate(context: vscode.ExtensionContext) {
         // You could send telemetry here
     });
 
-    context.subscriptions.push(manualCommand, acceptCommand);
+    context.subscriptions.push(manualCommand, acceptCommand, showLogsCommand, debugProbeCommand);
 }
 
 function sendToWebview(context: vscode.ExtensionContext, suggestion: string, service: string, reveal: boolean = false) {
@@ -158,5 +230,6 @@ function getWebviewContent() {
 
 export function deactivate() {
     webviewPanel?.dispose();
+    logInfo("Extension", "Deactivated");
     console.log("⚡ AzureAI deactivated");
 }
