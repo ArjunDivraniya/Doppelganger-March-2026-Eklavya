@@ -1,4 +1,5 @@
 // PHASE 4 — API SERVICE (Mock → Real API toggle)
+// ACCEPTED SUGGESTION TRACKER
 
 import axios from "axios";
 import * as vscode from "vscode";
@@ -8,6 +9,80 @@ import { logError, logInfo, logWarn } from "./logger";
 
 const sessionCache = new Map<string, string>();
 const DEBUG_DISABLE_SESSION_CACHE = true;
+
+// ── Accepted Suggestions Tracker ──────────────────────────────────
+const acceptedSuggestions = new Set<string>();
+
+export function markAsAccepted(suggestion: string): void {
+    const key = suggestion.trim().slice(0, 80);
+    acceptedSuggestions.add(key);
+    // Keep Set bounded to 20 entries — evict oldest when full
+    if (acceptedSuggestions.size > 20) {
+        const oldest = acceptedSuggestions.values().next().value;
+        if (oldest !== undefined) {
+            acceptedSuggestions.delete(oldest);
+        }
+    }
+    console.log("[apiService] ✅ Marked as accepted:", key.slice(0, 40));
+}
+
+export function wasAlreadyAccepted(suggestion: string): boolean {
+    const key = suggestion.trim().slice(0, 80);
+    return acceptedSuggestions.has(key);
+}
+
+export function getRemainingLines(
+    fullSuggestion: string,
+    currentFileText: string
+): string | null {
+    // Split suggestion into individual lines
+    const suggestionLines = fullSuggestion
+        .split("\n")
+        .map(l => l.trim())
+        .filter(l => l.length > 0);
+
+    // Split current file into individual lines
+    const fileLines = currentFileText
+        .split("\n")
+        .map(l => l.trim())
+        .filter(l => l.length > 0);
+
+    // Find how many suggestion lines already exist in file
+    let matchedCount = 0;
+    for (const suggLine of suggestionLines) {
+        const existsInFile = fileLines.some(fileLine =>
+            fileLine === suggLine
+        );
+        if (existsInFile) {
+            matchedCount++;
+        } else {
+            break; // stop at first line not yet written
+        }
+    }
+
+    // If no lines matched — return full suggestion
+    if (matchedCount === 0) return fullSuggestion;
+
+    // If ALL lines already written — return null (nothing left)
+    if (matchedCount >= suggestionLines.length) {
+        console.log("[apiService] 🚫 All suggestion lines already written");
+        return null;
+    }
+
+    // Return only the remaining unwritten lines
+    const remaining = suggestionLines
+        .slice(matchedCount)
+        .join("\n");
+
+    console.log(
+        "[apiService] 📋 Returning remaining",
+        suggestionLines.length - matchedCount,
+        "lines of",
+        suggestionLines.length
+    );
+
+    return remaining;
+}
 
 function normalizeBackendBaseUrl(rawUrl: string): string {
     const trimmed = rawUrl.trim().replace(/\/+$/, "");
@@ -38,6 +113,24 @@ function setCache(key: string, value: string): void {
     }
 }
 
+/**
+ * Cleans and formats a raw suggestion string from the API or mock.
+ * Handles escaped characters, markdown fences, excess blank lines, etc.
+ */
+function cleanSuggestion(raw: string): string {
+    return raw
+        .replace(/\\n/g, "\n")         // fix escaped newlines → real newlines
+        .replace(/\\t/g, "\t")         // fix escaped tabs → real tabs
+        .replace(/\\r/g, "")           // remove carriage returns
+        .replace(/\\"/g, '"')          // fix escaped double quotes
+        .replace(/\\'/g, "'")          // fix escaped single quotes
+        .replace(/^```[\w]*\n?/, "")    // strip opening markdown fence
+        .replace(/\n?```$/, "")         // strip closing markdown fence
+        .replace(/^\n+/, "")            // remove leading newlines
+        .replace(/\n{3,}/g, "\n\n")     // collapse 3+ blank lines to 1
+        .trim();                         // remove leading/trailing whitespace
+}
+
 export const BACKEND_READY: boolean = true;
 const FALLBACK_TO_MOCK_ON_BACKEND_ERROR: boolean = true;
 // CHANGE THIS TO true WHEN BACKEND IS CONNECTED
@@ -56,7 +149,11 @@ export async function fetchSuggestion(
             hasSuggestion: !!result,
             services: context.detectedServices
         });
-        return result;
+        if (!result) return null;
+        const cleanedMock = cleanSuggestion(result);
+        const remainingMock = getRemainingLines(cleanedMock, context.previousCode);
+        if (!remainingMock) return null;
+        return remainingMock;
     }
 
 
@@ -108,14 +205,17 @@ export async function fetchSuggestion(
 
         const suggestion = response.data?.suggestion;
         if (suggestion) {
+            const cleaned = cleanSuggestion(suggestion);
             if (!DEBUG_DISABLE_SESSION_CACHE) {
-                setCache(context.cacheKey, suggestion);
+                setCache(context.cacheKey, cleaned);
             }
             logInfo("ApiService", "DATA FLOW STEP 1: Backend response received by Extension logic", {
                 latencyMs: Date.now() - startedAt,
-                suggestionPreview: suggestion.slice(0, 50) + "..."
+                suggestionPreview: cleaned.slice(0, 50) + "..."
             });
-            return suggestion;
+            const remaining = getRemainingLines(cleaned, context.previousCode);
+            if (!remaining) return null;
+            return remaining;
         }
 
         return null;
@@ -144,7 +244,12 @@ export async function fetchSuggestion(
                 originalError: err.message,
                 services: context.detectedServices
             });
-            return getMockSuggestion(context.detectedServices, context.currentLine);
+            const fallback = getMockSuggestion(context.detectedServices, context.currentLine);
+            if (!fallback) return null;
+            const cleanedFallback = cleanSuggestion(fallback);
+            const remainingFallback = getRemainingLines(cleanedFallback, context.previousCode);
+            if (!remainingFallback) return null;
+            return remainingFallback;
         }
 
 

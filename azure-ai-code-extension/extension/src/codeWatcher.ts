@@ -15,6 +15,10 @@ export class CodeWatcher {
     private statusBar: vscode.StatusBarItem;
     private onSuggestion: (suggestion: string, service: string, isManual: boolean) => void;
 
+    // COOLDOWN AFTER ACCEPTANCE
+    private lastAcceptedAt: number = 0;
+    private ACCEPT_COOLDOWN_MS: number = 1500;
+
     constructor(
         backendUrl: string,
         statusBar: vscode.StatusBarItem,
@@ -25,6 +29,13 @@ export class CodeWatcher {
         this.onSuggestion = onSuggestion;
     }
 
+    // COOLDOWN AFTER ACCEPTANCE
+    public notifyAccepted(): void {
+        this.lastAcceptedAt = Date.now();
+        this.lastSentKey = ""; // reset so next trigger is fresh
+        console.log("[codeWatcher] ⏸️ Cooldown started after accept");
+    }
+
     public register(context: vscode.ExtensionContext): void {
         const disposable = vscode.workspace.onDidChangeTextDocument(event => this.handleChange(event));
         context.subscriptions.push(disposable);
@@ -32,6 +43,14 @@ export class CodeWatcher {
     }
 
     private handleChange(event: vscode.TextDocumentChangeEvent): void {
+        // COOLDOWN AFTER ACCEPTANCE
+        // Guard: cooldown after acceptance
+        const timeSinceAccept = Date.now() - this.lastAcceptedAt;
+        if (timeSinceAccept < this.ACCEPT_COOLDOWN_MS) {
+            console.log("[codeWatcher] ⏸️ In cooldown, skipping trigger");
+            return;
+        }
+
         const editor = vscode.window.activeTextEditor;
 
         // Guards

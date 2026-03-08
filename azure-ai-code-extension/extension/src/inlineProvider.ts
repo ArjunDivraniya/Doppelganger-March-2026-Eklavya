@@ -3,7 +3,7 @@
 import * as vscode from "vscode";
 import { detectAzure } from "./azureDetector";
 import { buildContext } from "./contextBuilder";
-import { fetchSuggestion } from "./apiService";
+import { fetchSuggestion, getRemainingLines } from "./apiService";
 import { logError, logInfo, logWarn } from "./logger";
 
 const SUPPORTED_LANGUAGES = ["typescript", "javascript", "typescriptreact", "javascriptreact", "csharp"];
@@ -71,19 +71,60 @@ export class InlineSuggestionProvider implements vscode.InlineCompletionItemProv
                 return undefined;
             }
 
-            // 5. Create inline completion item at the exact cursor location.
+            // FILTER ALREADY WRITTEN LINES
+            // Get full file text
+            const fullFileText = document.getText();
+
+            // Filter out already written lines
+            const remaining = getRemainingLines(suggestion, fullFileText);
+
+            // Nothing left to suggest — all lines already written
+            if (!remaining || remaining.trim().length === 0) {
+                console.log("[inlineProvider] \uD83D\uDEAB No new lines to suggest");
+                return [];
+            }
+
+            // Use remaining instead of full suggestion
+            const suggestionToShow = remaining;
+
+            // STEP 1 — Fix newlines again as safety net
+            let fixed = suggestionToShow
+                .replace(/\\n/g, "\n")
+                .replace(/\\t/g, "\t")
+                .replace(/^```[\w]*\n?/, "")
+                .replace(/\n?```$/, "")
+                .replace(/^\n+/, "")
+                .replace(/\n{3,}/g, "\n\n")
+                .trim();
+
+            // STEP 2 — Detect current line indentation
+            const currentLineText = document.lineAt(position.line).text;
+            const indentMatch = currentLineText.match(/^(\s*)/);
+            const indentation = indentMatch ? indentMatch[1] : "";
+
+            // STEP 3 — Apply indentation to every line after the first
+            const formatted = fixed
+                .split("\n")
+                .map((line, index) => {
+                    if (index === 0) return line;           // first line — no indent added
+                    if (line.trim() === "") return "";     // empty lines — keep empty
+                    return indentation + line;              // all other lines — add indent
+                })
+                .join("\n");
+
+            // STEP 4 — Return as InlineCompletionItem
             const insertionRange = new vscode.Range(position, position);
-            const item = new vscode.InlineCompletionItem(suggestion, insertionRange);
+            const item = new vscode.InlineCompletionItem(formatted, insertionRange);
 
             // Optional: Provide a command to log "acceptance"
             item.command = {
                 command: "azureai.acceptSuggestion",
                 title: "Accept Suggestion",
-                arguments: [suggestion, detection.detectedServices[0]]
+                arguments: [formatted, detection.detectedServices[0]]
             };
 
             logInfo("InlineProvider", "Inline item prepared", {
-                preview: suggestion.slice(0, 100)
+                preview: formatted.slice(0, 100)
             });
 
             return [item];
