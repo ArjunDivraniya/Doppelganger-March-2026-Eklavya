@@ -63,7 +63,10 @@ export default function OverviewSection() {
           transition={{ duration: 0.6 }}
         >
           <h2 className="text-3xl sm:text-4xl font-bold text-white">
-            A Seamless Workflow
+            A Seamless{" "}
+            <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+              Workflow
+            </span>
           </h2>
           <p className="mt-4 text-gray-400 max-w-2xl mx-auto">
             From installation to implementation in four simple steps. Understand how Azure AI Assist integrates into your development process.
