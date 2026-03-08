@@ -48,6 +48,9 @@ export function detectAzure(
     currentLine: string,
     fileName: string
 ): DetectionResult {
+    // FORCE ACTIVATION MODE: Allow debug comment for testing
+    const forceActivationMode = /\/\/\s*@azure-debug/.test(fullText.slice(0, 200));
+
     // a) Find JS/TS imports
     const tsImportRegex = /from\s+['"](@azure\/[^'"]+)['"]/g;
     const tsImports = Array.from(fullText.matchAll(tsImportRegex)).map(m => m[1]);
@@ -71,8 +74,8 @@ export function detectAzure(
     // e) fileMatch
     const fileMatch = AZURE_FILE_NAME.test(fileName);
 
-    // f) isAzure
-    const isAzure = detectedServices.length > 0 || keywordMatch || fileMatch;
+    // f) isAzure (force activation mode bypasses all checks)
+    const isAzure = forceActivationMode || detectedServices.length > 0 || keywordMatch || fileMatch;
 
     // If isAzure is true but no services detected via imports, try mapping from keywords
     if (isAzure && detectedServices.length === 0) {

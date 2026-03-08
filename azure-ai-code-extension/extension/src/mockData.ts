@@ -68,17 +68,20 @@ export function getMockSuggestion(
     detectedServices: string[],
     currentLine: string
 ): string | null {
+    const currentLineLower = currentLine.toLowerCase();
+
     for (const service of detectedServices) {
-        // Try keyword match first
+        // Try keyword match first (CASE-INSENSITIVE)
         for (const key in MOCK_SUGGESTIONS) {
             if (key.startsWith(service + ":")) {
                 const keyword = key.split(":")[1];
-                if (currentLine.includes(keyword)) {
+                // Case-insensitive match: check if keyword appears in currentLine
+                if (currentLineLower.includes(keyword.toLowerCase())) {
                     return MOCK_SUGGESTIONS[key];
                 }
             }
         }
-        // Fallback to service-only key
+        // Fallback to service-only key (handles generic service names like 'blob' or 'cosmos')
         if (MOCK_SUGGESTIONS[service]) {
             return MOCK_SUGGESTIONS[service];
         }

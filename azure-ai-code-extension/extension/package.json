@@ -11,7 +11,11 @@
     "Other"
   ],
   "activationEvents": [
-    "*"
+    "onLanguage:typescript",
+    "onLanguage:javascript",
+    "onLanguage:typescriptreact",
+    "onLanguage:javascriptreact",
+    "onLanguage:csharp"
   ],
   "main": "./out/extension.js",
   "contributes": {
