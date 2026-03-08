@@ -1,11 +1,19 @@
+import HeroSection from "./components/HeroSection";
+import HowItWorksSection from "./components/HowItWorksSection";
+import FeaturesSection from "./components/FeaturesSection";
+import DemoSection from "./components/DemoSection";
+import Footer from "./components/Footer";
+
 function App() {
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">
-      <h1 className="text-4xl font-bold text-blue-400">
-        AzureAI Code Suggest — Coming Soon
-      </h1>
+    <div className="min-h-screen bg-gray-950 text-white overflow-x-hidden antialiased">
+      <HeroSection />
+      <HowItWorksSection />
+      <FeaturesSection />
+      <DemoSection />
+      <Footer />
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
