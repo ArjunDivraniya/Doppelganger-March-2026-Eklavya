@@ -6,7 +6,7 @@ export const config = {
     // URL of the local or remote backend server
     BACKEND_URL: (process.env.BACKEND_URL && process.env.BACKEND_URL.trim() !== "")
         ? process.env.BACKEND_URL
-        : "http://127.0.0.1:3005",
+        : "https://azure-ai-code-backend.onrender.com",
 
     // Set to true to connect to the actual backend.
     // Set to false to force OFFLINE mode (mocks only).

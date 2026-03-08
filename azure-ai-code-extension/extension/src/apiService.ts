@@ -100,13 +100,8 @@ export function getRemainingLines(
 function normalizeBackendBaseUrl(rawUrl: string): string {
     const trimmed = rawUrl.trim().replace(/\/+$/, "");
 
-    // Always prefer loopback IP to avoid localhost resolution delays in Extension Host.
-    if (/^https?:\/\/localhost(?=[:/]|$)/i.test(trimmed)) {
-        return trimmed.replace(/^http:\/\/localhost(?=[:/]|$)/i, "http://127.0.0.1");
-    }
-
     if (!/^https?:\/\//i.test(trimmed)) {
-        return "http://127.0.0.1:3005";
+        return "https://azure-ai-code-backend.onrender.com";
     }
 
     return trimmed;
@@ -191,7 +186,7 @@ export async function fetchSuggestion(
         }
     };
 
-    const normalizedBase = normalizeBackendBaseUrl("http://127.0.0.1:3005");
+    const normalizedBase = normalizeBackendBaseUrl(backendUrl || config.BACKEND_URL);
     const targetUrl = `${normalizedBase}/suggest`;
 
     logInfo("ApiService", "Sending backend request", {
@@ -209,7 +204,7 @@ export async function fetchSuggestion(
 
     try {
         const response = await axios.post(targetUrl, payload, {
-            timeout: 10000, // 10s timeout for backend LLM processing
+            timeout: 25000,
             headers: { "Content-Type": "application/json" }
         });
 
