@@ -164,6 +164,9 @@ export async function fetchSuggestion(
 
 
     // Debug phase: bypass session cache so every keystroke makes a fresh backend request.
+    // Debug phase: bypass session cache so every keystroke makes a fresh backend request.
+    // Cache has been disabled per user request.
+    /*
     if (!config.DEBUG_DISABLE_SESSION_CACHE) {
         const cached = getCached(context.cacheKey);
         if (cached) {
@@ -174,6 +177,7 @@ export async function fetchSuggestion(
             return cached;
         }
     }
+    */
 
     // Prepare full payload for the backend
     const payload = {
@@ -187,7 +191,7 @@ export async function fetchSuggestion(
         }
     };
 
-    const normalizedBase = normalizeBackendBaseUrl(backendUrl || "http://127.0.0.1:3005");
+    const normalizedBase = normalizeBackendBaseUrl("http://127.0.0.1:3005");
     const targetUrl = `${normalizedBase}/suggest`;
 
     logInfo("ApiService", "Sending backend request", {
@@ -241,9 +245,7 @@ export async function fetchSuggestion(
             });
         }
 
-        vscode.window.showErrorMessage(
-            `AzureAI backend unreachable at ${targetUrl}. ${err?.message ?? "Unknown error"}`
-        );
+        vscode.window.showErrorMessage("Backend unreachable: " + err.message);
 
         if (config.FALLBACK_TO_MOCK_ON_BACKEND_ERROR) {
             logWarn("ApiService", "BACKEND UNAVAILABLE: Using mock fallback suggestion", {

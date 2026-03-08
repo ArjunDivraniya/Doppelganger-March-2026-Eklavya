@@ -21,7 +21,8 @@ export class InlineSuggestionProvider implements vscode.InlineCompletionItemProv
         context: vscode.InlineCompletionContext,
         token: vscode.CancellationToken
     ): Promise<vscode.InlineCompletionList | vscode.InlineCompletionItem[] | undefined> {
-        console.log("[DEBUG] Pipeline Started");
+        const currentLine = document.lineAt(position.line).text;
+        console.log("[DEBUG] Pipeline started for line: " + currentLine);
         logInfo("InlineProvider", "Completion requested", {
             language: document.languageId,
             position: `${position.line}:${position.character}`,
@@ -36,7 +37,6 @@ export class InlineSuggestionProvider implements vscode.InlineCompletionItemProv
 
         // 2. Detect Azure context
         const fullText = document.getText();
-        const currentLine = document.lineAt(position.line).text;
         const detection = detectAzure(fullText, currentLine, document.fileName);
 
         logInfo("InlineProvider", "Azure detection result", {
@@ -136,7 +136,7 @@ export class InlineSuggestionProvider implements vscode.InlineCompletionItemProv
             }
 
             // STEP 4 — Return as InlineCompletionItem
-            const insertionRange = new vscode.Range(targetPosition, targetPosition);
+            const insertionRange = new vscode.Range(position, position);
             const item = new vscode.InlineCompletionItem(dedupedAtTarget, insertionRange);
 
             // Optional: Provide a command to log "acceptance"

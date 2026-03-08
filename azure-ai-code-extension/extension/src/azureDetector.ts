@@ -105,9 +105,8 @@ export function detectAzure(
     const keywordMatch = keywordHitsCurrentLine.length > 0 || keywordHitsFullText.length > 0;
 
     // Force trigger for JS/TS files even before imports are added.
-    const isJsOrTsFile = /\.(ts|tsx|js|jsx)$/.test(lowerFileName);
-    const forcedWords = ["blob", "cosmos", "client", "storage", "secret", "vault"];
-    const forceTrigger = isJsOrTsFile && forcedWords.some(word => lowerCurrentLine.includes(word));
+    const isJsOrTsFile = /\.(ts|tsx|js|jsx|cs)$/.test(lowerFileName);
+    const forceTrigger = isJsOrTsFile;
 
     // e) fileMatch
     const fileMatch = AZURE_FILE_NAME.test(lowerFileName);
@@ -126,8 +125,12 @@ export function detectAzure(
 
         // Keep payload non-empty when any Azure keyword exists.
         if (detectedServices.length === 0) {
-            detectedServices.push("generic-azure");
+            detectedServices.push("azure-identity");
         }
+    }
+
+    if (isAzure && detectedServices.length === 0) {
+        detectedServices.push("azure-identity");
     }
 
     const uniqueServices = Array.from(new Set(detectedServices));
