@@ -38,6 +38,24 @@ function setCache(key: string, value: string): void {
     }
 }
 
+/**
+ * Cleans and formats a raw suggestion string from the API or mock.
+ * Handles escaped characters, markdown fences, excess blank lines, etc.
+ */
+function cleanSuggestion(raw: string): string {
+    return raw
+        .replace(/\\n/g, "\n")         // fix escaped newlines → real newlines
+        .replace(/\\t/g, "\t")         // fix escaped tabs → real tabs
+        .replace(/\\r/g, "")           // remove carriage returns
+        .replace(/\\"/g, '"')          // fix escaped double quotes
+        .replace(/\\'/g, "'")          // fix escaped single quotes
+        .replace(/^```[\w]*\n?/, "")    // strip opening markdown fence
+        .replace(/\n?```$/, "")         // strip closing markdown fence
+        .replace(/^\n+/, "")            // remove leading newlines
+        .replace(/\n{3,}/g, "\n\n")     // collapse 3+ blank lines to 1
+        .trim();                         // remove leading/trailing whitespace
+}
+
 export const BACKEND_READY: boolean = true;
 const FALLBACK_TO_MOCK_ON_BACKEND_ERROR: boolean = true;
 // CHANGE THIS TO true WHEN BACKEND IS CONNECTED
@@ -56,7 +74,7 @@ export async function fetchSuggestion(
             hasSuggestion: !!result,
             services: context.detectedServices
         });
-        return result;
+        return result ? cleanSuggestion(result) : null;
     }
 
 
@@ -108,14 +126,15 @@ export async function fetchSuggestion(
 
         const suggestion = response.data?.suggestion;
         if (suggestion) {
+            const cleaned = cleanSuggestion(suggestion);
             if (!DEBUG_DISABLE_SESSION_CACHE) {
-                setCache(context.cacheKey, suggestion);
+                setCache(context.cacheKey, cleaned);
             }
             logInfo("ApiService", "DATA FLOW STEP 1: Backend response received by Extension logic", {
                 latencyMs: Date.now() - startedAt,
-                suggestionPreview: suggestion.slice(0, 50) + "..."
+                suggestionPreview: cleaned.slice(0, 50) + "..."
             });
-            return suggestion;
+            return cleaned;
         }
 
         return null;
@@ -144,7 +163,8 @@ export async function fetchSuggestion(
                 originalError: err.message,
                 services: context.detectedServices
             });
-            return getMockSuggestion(context.detectedServices, context.currentLine);
+            const fallback = getMockSuggestion(context.detectedServices, context.currentLine);
+            return fallback ? cleanSuggestion(fallback) : null;
         }
 
 
