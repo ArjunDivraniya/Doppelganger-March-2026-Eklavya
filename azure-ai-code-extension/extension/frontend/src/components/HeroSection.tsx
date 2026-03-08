@@ -211,22 +211,27 @@ export default function HeroSection() {
         </p>
 
         {/* CTA Buttons */}
-        <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
+        <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center items-center">
+          <motion.a
+            href="https://marketplace.visualstudio.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.97 }}
+            className="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-semibold text-base shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-shadow"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M17.583 2.603L9.87 8.461 4.916 5.15 2 6.261v11.478l2.916 1.112 4.954-3.312 7.713 5.858L22 19.529V4.471l-4.417-1.868zM9.186 15.119l-4.27 3.2V5.68l4.27 3.2v6.239zm8.397 2.793l-6.47-4.912V8.602l-1.886-1.433V6.5l8.356-3.44v14.852z" />
+            </svg>
+            Install Extension
+          </motion.a>
           <motion.a
             href="#how-it-works"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.97 }}
-            className="px-8 py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-semibold text-base shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-shadow"
-          >
-            See How It Works
-          </motion.a>
-          <motion.a
-            href="#features"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.97 }}
             className="px-8 py-3.5 rounded-xl border border-gray-700 bg-white/5 text-gray-300 font-semibold text-base hover:bg-white/10 hover:border-gray-600 transition-colors backdrop-blur-sm"
           >
-            View Features
+            See How It Works
           </motion.a>
         </div>
       </motion.div>
