@@ -33,30 +33,7 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         {/* Logo */}
         <a href="#" className="flex items-center gap-2.5 group">
-          {/* Azure-style icon */}
-          <div className="relative w-8 h-8">
-            <svg viewBox="0 0 32 32" className="w-8 h-8" fill="none">
-              <defs>
-                <linearGradient id="navLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#3b82f6" />
-                  <stop offset="100%" stopColor="#06b6d4" />
-                </linearGradient>
-              </defs>
-              <rect rx="8" width="32" height="32" fill="url(#navLogoGrad)" opacity="0.15" />
-              <path
-                d="M9 8l6.5 16L24 11.5l-5.5-1L9 8z"
-                fill="url(#navLogoGrad)"
-                opacity="0.9"
-              />
-              <path
-                d="M9 8l4.5 6.5L24 11.5"
-                stroke="url(#navLogoGrad)"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                fill="none"
-              />
-            </svg>
-          </div>
+          <img src="/logo.png" alt="Azure AI Code Assistant Logo" className="w-15 h-15" />
           <span className="text-lg font-bold text-white tracking-tight">
             Azure AI{" "}
             <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
