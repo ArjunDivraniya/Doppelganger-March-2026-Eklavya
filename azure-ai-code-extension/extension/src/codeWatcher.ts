@@ -54,7 +54,7 @@ export class CodeWatcher {
         if (this.debounceTimer) {
             clearTimeout(this.debounceTimer);
         }
-        this.debounceTimer = setTimeout(() => this.processChange(event.document, editor), 300);
+        this.debounceTimer = setTimeout(() => this.processChange(event.document, editor), 200);
     }
 
     private async processChange(doc: vscode.TextDocument, editor: vscode.TextEditor): Promise<void> {
@@ -64,14 +64,18 @@ export class CodeWatcher {
 
         // d) detectAzure
         const detection = detectAzure(fullText, currentLine, doc.fileName);
-        logInfo("CodeWatcher", "Azure detection for typing event", {
+        logInfo("CodeWatcher", "Azure detection results", {
             isAzure: detection.isAzure,
-            services: detection.detectedServices
+            services: detection.detectedServices,
+            linePreview: currentLine.trim().slice(0, 50)
         });
 
         // e) If NOT detection.isAzure → return
         if (!detection.isAzure) {
-            logWarn("CodeWatcher", "Skipped non-Azure typing event");
+            logWarn("CodeWatcher", "Skipped: No Azure context detected (imports/keywords/filename)", {
+                line: currentLine.trim(),
+                file: doc.fileName
+            });
             return;
         }
 
@@ -80,9 +84,10 @@ export class CodeWatcher {
 
         // g) If codeContext.cacheKey === this.lastSentKey → return
         if (codeContext.cacheKey === this.lastSentKey) {
-            logInfo("CodeWatcher", "Skipped duplicate cacheKey", { cacheKey: codeContext.cacheKey });
+            logInfo("CodeWatcher", "Skipped: Duplicate request for this context", { cacheKey: codeContext.cacheKey });
             return;
         }
+
 
         // h) Update last sent key
         this.lastSentKey = codeContext.cacheKey;

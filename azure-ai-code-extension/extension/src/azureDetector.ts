@@ -22,7 +22,7 @@ export const AZURE_SDK_MAP: Record<string, string> = {
     "Microsoft.Azure.EventHubs": "event-hubs"
 };
 
-const AZURE_KEYWORDS = /azure|blob|cosmos|keyvault|secret|storage|servicebus|eventhub|credential|client/i;
+const AZURE_KEYWORDS = /azure|blob|cosmos|keyvault|secret|storage|servicebus|eventhub|credential|client|bus|identity|vault|table|queue|auth/i;
 
 const AZURE_FILE_NAME = /azure[-.]|\.azure\.|azure-config|azureservice/;
 
@@ -32,11 +32,16 @@ const KEYWORD_SERVICE_MAP: Record<string, string> = {
     "cosmos": "cosmos-db",
     "secret": "key-vault",
     "keyvault": "key-vault",
+    "vault": "key-vault",
     "credential": "azure-identity",
     "identity": "azure-identity",
+    "auth": "azure-identity",
     "servicebus": "service-bus",
+    "bus": "service-bus",
     "eventhub": "event-hubs",
-    "textanalytics": "cognitive-services"
+    "textanalytics": "cognitive-services",
+    "table": "storage-table",
+    "queue": "storage-queue"
 };
 
 const FORCE_ACTIVATION_MARKER = "// @azure-debug";

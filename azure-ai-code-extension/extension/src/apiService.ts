@@ -35,12 +35,13 @@ export async function fetchSuggestion(
     // Always execute mock generation while backend is disabled.
     if (BACKEND_READY === false) {
         const result = getMockSuggestion(context.detectedServices, context.currentLine);
-        logInfo("ApiService", "Mock mode active", {
+        logInfo("ApiService", "OFFLINE MODE: Using mock suggestions (BACKEND_READY=false)", {
             hasSuggestion: !!result,
             services: context.detectedServices
         });
         return result;
     }
+
 
     // Session cache is only used for backend responses.
     const cached = getCached(context.cacheKey);
@@ -89,10 +90,9 @@ export async function fetchSuggestion(
         const suggestion = response.data?.suggestion;
         if (suggestion) {
             setCache(context.cacheKey, suggestion);
-            logInfo("ApiService", "Backend response received", {
+            logInfo("ApiService", "DATA FLOW STEP 1: Backend response received by Extension logic", {
                 latencyMs: Date.now() - startedAt,
-                status: response.status,
-                suggestionLength: suggestion.length
+                suggestionPreview: suggestion.slice(0, 50) + "..."
             });
             return suggestion;
         }
@@ -115,8 +115,13 @@ export async function fetchSuggestion(
         }
 
         if (FALLBACK_TO_MOCK_ON_BACKEND_ERROR) {
+            logWarn("ApiService", "BACKEND UNAVAILABLE: Using mock fallback suggestion", {
+                originalError: err.message,
+                services: context.detectedServices
+            });
             return getMockSuggestion(context.detectedServices, context.currentLine);
         }
+
 
         return null;
     }

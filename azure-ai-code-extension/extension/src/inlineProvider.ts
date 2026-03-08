@@ -55,10 +55,9 @@ export class InlineSuggestionProvider implements vscode.InlineCompletionItemProv
         // 4. Fetch suggestion (Mock or Real)
         try {
             const suggestion = await fetchSuggestion(codeContext, this.backendUrl);
-            logInfo("InlineProvider", "Fetch completed", {
+            logInfo("InlineProvider", "DATA FLOW STEP 2 (GHOST TEXT): Sending result to Editor UI", {
                 hasSuggestion: !!suggestion,
-                suggestionLength: suggestion?.length ?? 0,
-                cancelled: token.isCancellationRequested
+                suggestionLength: suggestion?.length ?? 0
             });
 
             if (!suggestion) {
@@ -72,12 +71,8 @@ export class InlineSuggestionProvider implements vscode.InlineCompletionItemProv
             }
 
             // 5. Create Inline Completion Item
-            // Use a range that replaces the entire line for smoother insertion (since backend returns full line)
-            const lineRange = document.lineAt(position.line).range;
-            const item = new vscode.InlineCompletionItem(
-                suggestion,
-                lineRange
-            );
+            // Don't provide a range - just insert the suggestion text at cursor position
+            const item = new vscode.InlineCompletionItem(suggestion);
 
             // Optional: Provide a command to log "acceptance"
             item.command = {

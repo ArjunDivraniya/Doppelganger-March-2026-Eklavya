@@ -131,6 +131,10 @@ export function activate(context: vscode.ExtensionContext) {
 function sendToWebview(context: vscode.ExtensionContext, suggestion: string, service: string, reveal: boolean = false) {
     // If panel already exists, just send message
     if (webviewPanel) {
+        logInfo("Extension", "DATA FLOW STEP 2 (DASHBOARD): Sending result to Webview panel", {
+            service,
+            suggestionPreview: suggestion.slice(0, 50) + "..."
+        });
         webviewPanel.webview.postMessage({ type: "suggestion", suggestion, service });
         if (reveal) {
             webviewPanel.reveal(vscode.ViewColumn.Beside, true);
