@@ -20,6 +20,12 @@
 
 AI-powered Azure SDK coding assistant for VS Code with inline suggestions, RAG-backed retrieval, feedback collection, and companion product UI.
 
+## 🔗 Quick Links
+- `Extension (VS Code Marketplace)`: https://marketplace.visualstudio.com/items?itemName=TEAMEKLAVYA.azure-ai-code-assistant&ssr=false#review-details
+- `Frontend Website`: https://azure-ai-code-assistant.vercel.app/
+- `Video Demo`: https://drive.google.com/drive/folders/1Zb8M3IUdBzpEJxNmIYs8VTnT2gJGGbvD?usp=sharing
+- `GitHub Repository`: https://github.com/ArjunDivraniya/Doppelganger-March-2026-Eklavya
+
 ## 🌟 Overview
 This repository contains a full-stack project:
 - A **VS Code extension** that detects Azure coding context and generates inline suggestions.
