@@ -76,10 +76,23 @@ const SERVICE_ALIASES: Record<string, string[]> = {
 
 export function getMockSuggestion(
     detectedServices: string[],
-    currentLine: string
+    currentLine: string,
+    previousCode: string = ""
 ): string | null {
     const currentLineLower = currentLine.toLowerCase();
+    const previousCodeLower = previousCode.toLowerCase();
     const candidateServices = new Set(detectedServices);
+
+    /**
+     * Helper to check if a suggestion (roughly) already exists in the code.
+     * Normalizes by removing whitespace and comments to avoid being fooled by formatting.
+     */
+    const isCodeAlreadyPresent = (suggestion: string): boolean => {
+        const normalize = (s: string) => s.replace(/\s+/g, "").replace(/\/\/.*$/gm, "").toLowerCase();
+        const normSug = normalize(suggestion);
+        if (!normSug) return false;
+        return normalize(previousCode).includes(normSug);
+    };
 
     // Recover from sparse detection by inferring service from what the developer typed.
     for (const [service, aliases] of Object.entries(SERVICE_ALIASES)) {
@@ -88,20 +101,40 @@ export function getMockSuggestion(
         }
     }
 
-    for (const service of candidateServices) {
-        // Try keyword match first (CASE-INSENSITIVE)
-        for (const key in MOCK_SUGGESTIONS) {
-            if (key.startsWith(service + ":")) {
-                const keyword = key.split(":")[1];
-                // Case-insensitive match: check if keyword appears in currentLine
-                if (currentLineLower.includes(keyword.toLowerCase())) {
-                    return MOCK_SUGGESTIONS[key];
+    for (const service of Array.from(candidateServices)) {
+        // 1. Try specific keyword matches first (e.g., "blob-storage:upload")
+        // We iterate through all keys to find matches for the current service.
+        const specificMatches = Object.keys(MOCK_SUGGESTIONS).filter(k => k.startsWith(service + ":"));
+
+        for (const key of specificMatches) {
+            const keyword = key.split(":")[1];
+            if (currentLineLower.includes(keyword.toLowerCase())) {
+                const suggestion = MOCK_SUGGESTIONS[key];
+                if (!isCodeAlreadyPresent(suggestion)) {
+                    return suggestion;
                 }
             }
         }
-        // Fallback to service-only key (handles generic service names like 'blob' or 'cosmos')
-        if (MOCK_SUGGESTIONS[service]) {
-            return MOCK_SUGGESTIONS[service];
+
+        // 2. Continuous flow logic: If generic service is detected, suggest the next sensible thing.
+        // For blob storage, if they have the client, suggest container, etc.
+        if (service === "blob-storage") {
+            const flow = [
+                MOCK_SUGGESTIONS["blob-storage:BlobServiceClient"],
+                MOCK_SUGGESTIONS["blob-storage:upload"],
+                MOCK_SUGGESTIONS["blob-storage:download"]
+            ];
+            for (const step of flow) {
+                if (step && !isCodeAlreadyPresent(step)) {
+                    return step;
+                }
+            }
+        }
+
+        // 3. Fallback to service-only key (generic setup)
+        const genericSuggestion = MOCK_SUGGESTIONS[service];
+        if (genericSuggestion && !isCodeAlreadyPresent(genericSuggestion)) {
+            return genericSuggestion;
         }
     }
     return null;
