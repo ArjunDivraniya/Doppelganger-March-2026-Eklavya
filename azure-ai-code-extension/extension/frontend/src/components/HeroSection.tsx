@@ -213,7 +213,7 @@ export default function HeroSection() {
         {/* CTA Buttons */}
         <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center items-center">
           <motion.a
-            href="https://marketplace.visualstudio.com/"
+            href="https://marketplace.visualstudio.com/items?itemName=TEAMEKLAVYA.azure-ai-code-assistant"
             target="_blank"
             rel="noopener noreferrer"
             whileHover={{ scale: 1.05 }}

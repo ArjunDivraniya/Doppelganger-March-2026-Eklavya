@@ -58,7 +58,7 @@ export default function Navbar() {
         {/* CTA + Mobile toggle */}
         <div className="flex items-center gap-3">
           <a
-            href="https://marketplace.visualstudio.com/"
+            href="https://marketplace.visualstudio.com/items?itemName=TEAMEKLAVYA.azure-ai-code-assistant"
             target="_blank"
             rel="noopener noreferrer"
             className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 text-white text-sm font-semibold shadow-md shadow-blue-500/20 hover:shadow-blue-500/40 transition-shadow"
@@ -108,7 +108,7 @@ export default function Navbar() {
                 </a>
               ))}
               <a
-                href="https://marketplace.visualstudio.com/"
+                href="https://marketplace.visualstudio.com/items?itemName=TEAMEKLAVYA.azure-ai-code-assistant"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-3 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 text-white text-sm font-semibold"
