@@ -1,73 +1,80 @@
-# React + TypeScript + Vite
+# Azure AI Assist Frontend Website Overview
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## What This Website Is
+This website is the landing page for the **Azure AI Assist** VS Code extension. It presents the product, explains how it works, and demonstrates how developers get AI-powered Azure SDK code suggestions directly inside VS Code.
 
-Currently, two official plugins are available:
+It is built with React + TypeScript + Vite and uses animated UI sections to show the extension workflow.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Main Purpose
+- Introduce Azure AI Assist to developers.
+- Show the extension workflow from installation to suggestion acceptance.
+- Demonstrate AI inline suggestions with an interactive mock editor.
+- Build trust with feature explanations and a feedback/review experience.
+- Encourage installation from the VS Code Marketplace.
 
-## React Compiler
+## Website Sections
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 1. Navbar
+- Sticky, animated top navigation.
+- Links: `Overview`, `How It Works`, `Features`, `Demo`, `Feedback`.
+- Primary CTA button: `Install Extension` (opens VS Code Marketplace).
+- Mobile menu support.
 
-## Expanding the ESLint configuration
+### 2. Hero Section
+- Big headline: **Azure AI Assistant for VS Code**.
+- Typewriter subtitle describing intelligent Azure SDK suggestions.
+- Animated visual background with floating Azure and VS Code logos.
+- CTAs:
+  - `Install Extension`
+  - `See How It Works`
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### 3. Overview Section
+Shows a 4-step high-level journey:
+1. Install from Marketplace.
+2. Start typing Azure SDK code.
+3. Receive intelligent inline suggestions.
+4. Press `TAB` to accept.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+Each step has descriptive details and a visual preview panel.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### 4. How It Works Section
+Detailed technical flow in 4 stages:
+1. User writes Azure-related code.
+2. Extension detects Azure context/patterns.
+3. Azure OpenAI + RAG generates a relevant suggestion.
+4. User accepts (Tab) or ignores.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Hover interactions reveal more details and visuals.
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 5. Features Section
+Highlights key product capabilities:
+- Intelligent inline (ghost text) suggestions.
+- Automatic Azure context detection.
+- RAG-enhanced accuracy using documentation grounding.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Presented as alternating feature cards with visuals and bullet points.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+### 6. Demo Section
+Interactive simulation of the extension behavior:
+- Mock VS Code editor UI.
+- Suggestion appears as ghost text while typing.
+- User can press `TAB` or click a button to accept suggestion.
+- Acceptance updates code and status bar in the demo.
+
+### 7. Feedback Section
+Represents post-suggestion feedback workflow:
+- Star rating input (1-5).
+- Optional text feedback submission.
+- Live-style recent review feed.
+- Example product metrics (average rating, total reviews, helpfulness).
+
+### 8. Footer
+- Credits `Team Eklavya`.
+- Mentions `Powered by Azure OpenAI`.
+
+## User Journey Summary
+A visitor lands on the page, understands the extension value quickly, learns the technical flow, sees a practical demo, checks social proof via feedback/reviews, and is pushed toward installing from the VS Code Marketplace.
+
+## Notes
+- Current visuals use placeholder image asset paths (`/image.png`) across multiple sections.
+- The content and interactions are optimized for a product demo/landing page experience rather than a documentation portal.
