@@ -82,9 +82,8 @@ function getMockSuggestion(messages) {
     const userMsg = messages.find((m) => m.role === 'user')?.content || '';
     const normalizedUserMsg = userMsg.toLowerCase();
 
-    const isAlreadyPresent = (suggestion) => {
-        const normalize = (s) => s.replace(/\s+/g, "").toLowerCase();
-        return normalize(userMsg).includes(normalize(suggestion));
+    const isAlreadyPresent = (marker) => {
+        return normalizedUserMsg.includes(marker.toLowerCase());
     };
 
     if (normalizedUserMsg.includes('upload a file to azure blob') && normalizedUserMsg.includes('defaultazurecredential')) {
@@ -94,27 +93,30 @@ const containerClient = blobServiceClient.getContainerClient(containerName);
 await containerClient.createIfNotExists();
 const blockBlobClient = containerClient.getBlockBlobClient(fileName);
 await blockBlobClient.uploadData(fileBuffer);`;
-        if (!isAlreadyPresent(suggestion)) return suggestion;
+        if (!isAlreadyPresent('blobserviceclient')) return suggestion;
     }
 
     const suggestions = [
         {
             trigger: ['blobserviceclient', 'blob-storage'],
-            code: 'BlobServiceClient.fromConnectionString(process.env.AZURE_STORAGE_CONNECTION_STRING)'
+            code: 'BlobServiceClient.fromConnectionString(process.env.AZURE_STORAGE_CONNECTION_STRING)',
+            marker: 'blobserviceclient'
         },
         {
             trigger: ['cosmosclient', 'cosmos-db'],
-            code: 'new CosmosClient({ endpoint: process.env.COSMOS_ENDPOINT, key: process.env.COSMOS_KEY })'
+            code: 'new CosmosClient({ endpoint: process.env.COSMOS_ENDPOINT, key: process.env.COSMOS_KEY })',
+            marker: 'cosmosclient'
         },
         {
             trigger: ['defaultazurecredential', 'identity'],
-            code: 'new DefaultAzureCredential()'
+            code: 'new DefaultAzureCredential()',
+            marker: 'defaultazurecredential'
         }
     ];
 
     for (const item of suggestions) {
         if (item.trigger.some(t => normalizedUserMsg.includes(t))) {
-            if (!isAlreadyPresent(item.code)) {
+            if (!isAlreadyPresent(item.marker)) {
                 return item.code;
             }
         }

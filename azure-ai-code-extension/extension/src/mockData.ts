@@ -74,6 +74,25 @@ const SERVICE_ALIASES: Record<string, string[]> = {
     "cognitive-services": ["textanalytics", "text analytics", "analytics"]
 };
 
+const SNIPPET_MARKERS: Record<string, string> = {
+    "blob-storage:BlobServiceClient": "blobserviceclient",
+    "blob-storage:upload": "upload(",
+    "blob-storage:download": "download(",
+    "cosmos-db:CosmosClient": "cosmosclient",
+    "cosmos-db:query": ".query(",
+    "key-vault:SecretClient": "secretclient",
+    "azure-identity:DefaultAzureCredential": "defaultazurecredential",
+    "service-bus:ServiceBusClient": "servicebusclient",
+    "event-hubs:EventHubProducerClient": "eventhubproducerclient",
+    "cognitive-services:TextAnalyticsClient": "textanalyticsclient",
+    "blob-storage": "blobserviceclient",
+    "cosmos-db": "cosmosclient",
+    "key-vault": "secretclient",
+    "azure-identity": "defaultazurecredential",
+    "service-bus": "servicebusclient",
+    "event-hubs": "eventhubproducerclient"
+};
+
 export function getMockSuggestion(
     detectedServices: string[],
     currentLine: string,
@@ -83,15 +102,10 @@ export function getMockSuggestion(
     const previousCodeLower = previousCode.toLowerCase();
     const candidateServices = new Set(detectedServices);
 
-    /**
-     * Helper to check if a suggestion (roughly) already exists in the code.
-     * Normalizes by removing whitespace and comments to avoid being fooled by formatting.
-     */
-    const isCodeAlreadyPresent = (suggestion: string): boolean => {
-        const normalize = (s: string) => s.replace(/\s+/g, "").replace(/\/\/.*$/gm, "").toLowerCase();
-        const normSug = normalize(suggestion);
-        if (!normSug) return false;
-        return normalize(previousCode).includes(normSug);
+    const isCodeAlreadyPresent = (suggestionKey: string): boolean => {
+        const marker = SNIPPET_MARKERS[suggestionKey];
+        if (!marker) return false;
+        return previousCodeLower.includes(marker.toLowerCase());
     };
 
     // Recover from sparse detection by inferring service from what the developer typed.
@@ -103,38 +117,34 @@ export function getMockSuggestion(
 
     for (const service of Array.from(candidateServices)) {
         // 1. Try specific keyword matches first (e.g., "blob-storage:upload")
-        // We iterate through all keys to find matches for the current service.
         const specificMatches = Object.keys(MOCK_SUGGESTIONS).filter(k => k.startsWith(service + ":"));
 
         for (const key of specificMatches) {
             const keyword = key.split(":")[1];
             if (currentLineLower.includes(keyword.toLowerCase())) {
-                const suggestion = MOCK_SUGGESTIONS[key];
-                if (!isCodeAlreadyPresent(suggestion)) {
-                    return suggestion;
+                if (!isCodeAlreadyPresent(key)) {
+                    return MOCK_SUGGESTIONS[key];
                 }
             }
         }
 
         // 2. Continuous flow logic: If generic service is detected, suggest the next sensible thing.
-        // For blob storage, if they have the client, suggest container, etc.
         if (service === "blob-storage") {
             const flow = [
-                MOCK_SUGGESTIONS["blob-storage:BlobServiceClient"],
-                MOCK_SUGGESTIONS["blob-storage:upload"],
-                MOCK_SUGGESTIONS["blob-storage:download"]
+                "blob-storage:BlobServiceClient",
+                "blob-storage:upload",
+                "blob-storage:download"
             ];
-            for (const step of flow) {
-                if (step && !isCodeAlreadyPresent(step)) {
-                    return step;
+            for (const stepKey of flow) {
+                if (!isCodeAlreadyPresent(stepKey)) {
+                    return MOCK_SUGGESTIONS[stepKey];
                 }
             }
         }
 
         // 3. Fallback to service-only key (generic setup)
-        const genericSuggestion = MOCK_SUGGESTIONS[service];
-        if (genericSuggestion && !isCodeAlreadyPresent(genericSuggestion)) {
-            return genericSuggestion;
+        if (MOCK_SUGGESTIONS[service] && !isCodeAlreadyPresent(service)) {
+            return MOCK_SUGGESTIONS[service];
         }
     }
     return null;

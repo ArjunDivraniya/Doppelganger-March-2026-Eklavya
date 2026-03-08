@@ -5,6 +5,7 @@ console.log("[AzureAI] extension.ts script loading...");
 import { CodeWatcher } from "./codeWatcher";
 import { InlineSuggestionProvider } from "./inlineProvider";
 import { logInfo, showDebugLogs, logWarn } from "./logger";
+import { AzureImportFixer } from "./importFixer";
 import { detectAzure } from "./azureDetector";
 import { buildContext } from "./contextBuilder";
 import { fetchSuggestion, markAsAccepted } from "./apiService";
@@ -53,6 +54,16 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.languages.registerInlineCompletionItemProvider(
             supportedLanguages.map(lang => ({ language: lang })),
             inlineProvider
+        )
+    );
+
+    // 2.5 Register Code Action Provider (Quick Fixes for missing Azure imports)
+    const importFixer = new AzureImportFixer();
+    context.subscriptions.push(
+        vscode.languages.registerCodeActionsProvider(
+            supportedLanguages.map(lang => ({ language: lang })),
+            importFixer,
+            { providedCodeActionKinds: AzureImportFixer.providedCodeActionKinds }
         )
     );
 
