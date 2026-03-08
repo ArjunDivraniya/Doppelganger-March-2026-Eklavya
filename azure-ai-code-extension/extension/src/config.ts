@@ -1,7 +1,9 @@
 // config.ts
 // Centralized configuration file for the AzureAI Code Extension
 
+// export const DEFAULT_BACKEND_URL = "http://127.0.0.1:3005";
 export const DEFAULT_BACKEND_URL = "https://azure-ai-code-backend.onrender.com";
+
 
 export const config = {
     // ── Backend Connection ─────────────────────────────────
