@@ -1,7 +1,7 @@
 const ragService = require('../src/services/ragService');
 const promptBuilder = require('../src/services/promptBuilder');
 const llmService = require('../src/services/llmService');
-
+require("dotenv").config();
 const TEST_QUERY = 'Upload a file to Azure Blob using DefaultAzureCredential';
 
 function validateSuggestion(suggestion) {

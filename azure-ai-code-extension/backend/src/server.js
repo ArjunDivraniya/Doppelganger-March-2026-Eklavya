@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config();
+require("dotenv").config(); 
 
 const suggestRoutes = require('./routes/suggest');
 
@@ -37,4 +37,5 @@ app.listen(PORT, () => {
     console.log(`🚀 Backend server running on http://localhost:${PORT}`);
     console.log(`   LLM Provider: Groq API`);
     console.log(`   GROQ_API_KEY: ${process.env.GROQ_API_KEY ? '✔ configured' : '✘ missing (mock mode)'}`);
+    console.log("Groq Key Loaded:", process.env.GROQ_API_KEY ? "YES" : "NO");
 });
