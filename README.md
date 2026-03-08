@@ -45,12 +45,12 @@ flowchart LR
 		D --> E[Backend Controller]
 		E --> F[RAG Service + ChromaDB]
 		E --> G[Prompt Builder]
-		G --> H[LLM Service (Groq Llama)]
+		G --> H["LLM Service: Groq Llama"]
 		H --> I[Response Processor]
 		I --> B
 		B --> J[Inline Suggestion UI]
 		B --> K[Webview Panel]
-		K --> L[/feedback endpoint]
+		K --> L["Feedback API endpoint"]
 		L --> M[(MongoDB)]
 ```
 
