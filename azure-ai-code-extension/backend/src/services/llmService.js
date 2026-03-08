@@ -80,25 +80,44 @@ exports.generate = async (prompt) => {
 
 function getMockSuggestion(messages) {
     const userMsg = messages.find((m) => m.role === 'user')?.content || '';
-    const normalized = userMsg.toLowerCase();
+    const normalizedUserMsg = userMsg.toLowerCase();
 
-    if (normalized.includes('upload a file to azure blob') && normalized.includes('defaultazurecredential')) {
-        return `const credential = new DefaultAzureCredential();
+    const isAlreadyPresent = (suggestion) => {
+        const normalize = (s) => s.replace(/\s+/g, "").toLowerCase();
+        return normalize(userMsg).includes(normalize(suggestion));
+    };
+
+    if (normalizedUserMsg.includes('upload a file to azure blob') && normalizedUserMsg.includes('defaultazurecredential')) {
+        const suggestion = `const credential = new DefaultAzureCredential();
 const blobServiceClient = new BlobServiceClient(\`https://${'${process.env.AZURE_STORAGE_ACCOUNT_NAME}'}.blob.core.windows.net\`, credential);
 const containerClient = blobServiceClient.getContainerClient(containerName);
 await containerClient.createIfNotExists();
 const blockBlobClient = containerClient.getBlockBlobClient(fileName);
 await blockBlobClient.uploadData(fileBuffer);`;
+        if (!isAlreadyPresent(suggestion)) return suggestion;
     }
 
-    if (userMsg.includes('BlobServiceClient') || userMsg.includes('blob-storage')) {
-        return 'BlobServiceClient.fromConnectionString(process.env.AZURE_STORAGE_CONNECTION_STRING)';
-    }
-    if (userMsg.includes('CosmosClient') || userMsg.includes('cosmos-db')) {
-        return 'new CosmosClient({ endpoint: process.env.COSMOS_ENDPOINT, key: process.env.COSMOS_KEY })';
-    }
-    if (userMsg.includes('DefaultAzureCredential') || userMsg.includes('identity')) {
-        return 'new DefaultAzureCredential()';
+    const suggestions = [
+        {
+            trigger: ['blobserviceclient', 'blob-storage'],
+            code: 'BlobServiceClient.fromConnectionString(process.env.AZURE_STORAGE_CONNECTION_STRING)'
+        },
+        {
+            trigger: ['cosmosclient', 'cosmos-db'],
+            code: 'new CosmosClient({ endpoint: process.env.COSMOS_ENDPOINT, key: process.env.COSMOS_KEY })'
+        },
+        {
+            trigger: ['defaultazurecredential', 'identity'],
+            code: 'new DefaultAzureCredential()'
+        }
+    ];
+
+    for (const item of suggestions) {
+        if (item.trigger.some(t => normalizedUserMsg.includes(t))) {
+            if (!isAlreadyPresent(item.code)) {
+                return item.code;
+            }
+        }
     }
 
     return '// Azure SDK code suggestion placeholder';

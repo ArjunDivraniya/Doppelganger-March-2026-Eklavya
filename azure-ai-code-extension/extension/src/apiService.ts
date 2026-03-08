@@ -144,7 +144,7 @@ export async function fetchSuggestion(
 
     // Always execute mock generation while backend is disabled.
     if (BACKEND_READY === false) {
-        const result = getMockSuggestion(context.detectedServices, context.currentLine);
+        const result = getMockSuggestion(context.detectedServices, context.currentLine, context.previousCode);
         logInfo("ApiService", "OFFLINE MODE: Using mock suggestions (BACKEND_READY=false)", {
             hasSuggestion: !!result,
             services: context.detectedServices
@@ -244,7 +244,7 @@ export async function fetchSuggestion(
                 originalError: err.message,
                 services: context.detectedServices
             });
-            const fallback = getMockSuggestion(context.detectedServices, context.currentLine);
+            const fallback = getMockSuggestion(context.detectedServices, context.currentLine, context.previousCode);
             if (!fallback) return null;
             const cleanedFallback = cleanSuggestion(fallback);
             const remainingFallback = getRemainingLines(cleanedFallback, context.previousCode);
