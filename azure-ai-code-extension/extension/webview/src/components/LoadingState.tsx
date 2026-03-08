@@ -133,6 +133,25 @@ function LoadingState() {
           </motion.div>
         ))}
       </div>
+
+      <motion.button
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 2 }}
+        onClick={() => {
+          // This sends a message that the parent iframe (extension.ts) listens for
+          window.parent.postMessage({ type: "retry" }, "*");
+        }}
+        className="px-6 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all hover:scale-105 active:scale-95"
+        style={{
+          background: "rgba(255,255,255,0.03)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          color: "#6b7280",
+          cursor: "pointer",
+        }}
+      >
+        Taking too long? Trigger Manual Fetch
+      </motion.button>
     </motion.div>
   );
 }

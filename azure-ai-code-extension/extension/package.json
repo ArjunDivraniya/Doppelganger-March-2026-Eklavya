@@ -12,9 +12,6 @@
   ],
   "activationEvents": [
     "onStartupFinished",
-    "onCommand:azureai.suggest",
-    "onCommand:azureai.showDebugLogs",
-    "onCommand:azureai.debugProbe",
     "onLanguage:typescript",
     "onLanguage:javascript",
     "onLanguage:typescriptreact",
@@ -36,6 +33,10 @@
       {
         "command": "azureai.debugProbe",
         "title": "AzureAI: Debug Probe (Run Once)"
+      },
+      {
+        "command": "azureai.acceptSuggestion",
+        "title": "AzureAI: Accept Suggestion"
       }
     ],
     "keybindings": [

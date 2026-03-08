@@ -72,10 +72,11 @@ export class InlineSuggestionProvider implements vscode.InlineCompletionItemProv
             }
 
             // 5. Create Inline Completion Item
-            // We use the current position to provide the ghost text
+            // Use a range that replaces the entire line for smoother insertion (since backend returns full line)
+            const lineRange = document.lineAt(position.line).range;
             const item = new vscode.InlineCompletionItem(
                 suggestion,
-                new vscode.Range(position, position)
+                lineRange
             );
 
             // Optional: Provide a command to log "acceptance"

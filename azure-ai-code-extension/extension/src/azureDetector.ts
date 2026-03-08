@@ -22,7 +22,7 @@ export const AZURE_SDK_MAP: Record<string, string> = {
     "Microsoft.Azure.EventHubs": "event-hubs"
 };
 
-const AZURE_KEYWORDS = /azure|blob|cosmos|keyvault|secret|storage|servicebus|eventhub|credential/i;
+const AZURE_KEYWORDS = /azure|blob|cosmos|keyvault|secret|storage|servicebus|eventhub|credential|client/i;
 
 const AZURE_FILE_NAME = /azure[-.]|\.azure\.|azure-config|azureservice/;
 

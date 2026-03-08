@@ -64,8 +64,11 @@ export async function fetchSuggestion(
         }
     };
 
+    const normalizedBase = backendUrl.endsWith('/') ? backendUrl.slice(0, -1) : backendUrl;
+    const targetUrl = `${normalizedBase}/suggest`;
+
     logInfo("ApiService", "Sending backend request", {
-        url: `${backendUrl}/suggest`,
+        url: targetUrl,
         payload: {
             language: payload.language,
             imports: payload.imports,
@@ -78,8 +81,8 @@ export async function fetchSuggestion(
     });
 
     try {
-        const response = await axios.post(`${backendUrl}/suggest`, payload, {
-            timeout: 8000, // Slightly longer timeout for LLM
+        const response = await axios.post(targetUrl, payload, {
+            timeout: 10000, // 10s timeout for backend LLM processing
             headers: { "Content-Type": "application/json" }
         });
 
@@ -94,27 +97,25 @@ export async function fetchSuggestion(
             return suggestion;
         }
 
-        logWarn("ApiService", "Backend returned no suggestion", {
-            latencyMs: Date.now() - startedAt,
-            status: response.status,
-            responseKeys: Object.keys(response.data ?? {})
-        });
         return null;
     } catch (err: any) {
-        logError("ApiService", "Backend request failed", {
-            latencyMs: Date.now() - startedAt,
-            status: err.response?.status,
-            backendError: err.response?.data?.error,
-            message: err.message
-        });
+        const latencyMs = Date.now() - startedAt;
+        const status = err.response?.status;
+
+        if (status === 500) {
+            logError("ApiService", "Backend 500 Internal Server Error", { latencyMs });
+        } else if (err.code === 'ECONNABORTED') {
+            logError("ApiService", "Backend request timeout", { latencyMs });
+        } else {
+            logError("ApiService", "Backend request failed", {
+                latencyMs,
+                status,
+                message: err.message
+            });
+        }
 
         if (FALLBACK_TO_MOCK_ON_BACKEND_ERROR) {
-            const fallback = getMockSuggestion(context.detectedServices, context.currentLine);
-            logWarn("ApiService", "Using mock fallback after backend failure", {
-                hasSuggestion: !!fallback,
-                services: context.detectedServices
-            });
-            return fallback;
+            return getMockSuggestion(context.detectedServices, context.currentLine);
         }
 
         return null;

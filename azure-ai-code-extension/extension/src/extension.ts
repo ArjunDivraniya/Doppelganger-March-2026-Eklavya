@@ -9,9 +9,12 @@ import { detectAzure } from "./azureDetector";
 import { buildContext } from "./contextBuilder";
 import { fetchSuggestion } from "./apiService";
 
-const BACKEND_URL = process.env.BACKEND_URL ?? "https://demo-backend.azurewebsites.net";
+const BACKEND_URL = (process.env.BACKEND_URL && process.env.BACKEND_URL.trim() !== "")
+    ? process.env.BACKEND_URL
+    : "http://localhost:3005";
 
 let webviewPanel: vscode.WebviewPanel | undefined;
+let watcher: CodeWatcher;
 
 export function activate(context: vscode.ExtensionContext) {
     vscode.window.showInformationMessage("⚡ AzureAI Suggestion Engine — Active (Copilot Mode)");
@@ -54,7 +57,7 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     // 3. Create watcher with callback to send suggestions to webview (Dashboard Mode)
-    const watcher = new CodeWatcher(
+    watcher = new CodeWatcher(
         BACKEND_URL,
         statusBar,
         (suggestion, service, isManual) => sendToWebview(context, suggestion, service, isManual)
@@ -172,6 +175,11 @@ function sendToWebview(context: vscode.ExtensionContext, suggestion: string, ser
 
         if (msg.type === "reject") {
             webviewPanel?.dispose();
+        }
+
+        if (msg.type === "retry" || msg.type === "fetch") {
+            logInfo("Extension", "Manual fetch requested from webview");
+            watcher.triggerManually();
         }
 
         if (msg.type === "feedback") {
