@@ -1,11 +1,28 @@
 // PHASE 4 — API SERVICE (Mock → Real API toggle)
 
 import axios from "axios";
+import * as vscode from "vscode";
 import { CodeContext } from "./contextBuilder";
 import { getMockSuggestion } from "./mockData";
 import { logError, logInfo, logWarn } from "./logger";
 
 const sessionCache = new Map<string, string>();
+const DEBUG_DISABLE_SESSION_CACHE = true;
+
+function normalizeBackendBaseUrl(rawUrl: string): string {
+    const trimmed = rawUrl.trim().replace(/\/+$/, "");
+
+    // Always prefer loopback IP to avoid localhost resolution delays in Extension Host.
+    if (/^https?:\/\/localhost(?=[:/]|$)/i.test(trimmed)) {
+        return trimmed.replace(/^http:\/\/localhost(?=[:/]|$)/i, "http://127.0.0.1");
+    }
+
+    if (!/^https?:\/\//i.test(trimmed)) {
+        return "http://127.0.0.1:3005";
+    }
+
+    return trimmed;
+}
 
 function getCached(key: string): string | null {
     return sessionCache.get(key) ?? null;
@@ -43,14 +60,16 @@ export async function fetchSuggestion(
     }
 
 
-    // Session cache is only used for backend responses.
-    const cached = getCached(context.cacheKey);
-    if (cached) {
-        logInfo("ApiService", "Session cache hit", {
-            cacheKey: context.cacheKey,
-            suggestionLength: cached.length
-        });
-        return cached;
+    // Debug phase: bypass session cache so every keystroke makes a fresh backend request.
+    if (!DEBUG_DISABLE_SESSION_CACHE) {
+        const cached = getCached(context.cacheKey);
+        if (cached) {
+            logInfo("ApiService", "Session cache hit", {
+                cacheKey: context.cacheKey,
+                suggestionLength: cached.length
+            });
+            return cached;
+        }
     }
 
     // Prepare full payload for the backend
@@ -65,7 +84,7 @@ export async function fetchSuggestion(
         }
     };
 
-    const normalizedBase = backendUrl.endsWith('/') ? backendUrl.slice(0, -1) : backendUrl;
+    const normalizedBase = normalizeBackendBaseUrl(backendUrl || "http://127.0.0.1:3005");
     const targetUrl = `${normalizedBase}/suggest`;
 
     logInfo("ApiService", "Sending backend request", {
@@ -89,7 +108,9 @@ export async function fetchSuggestion(
 
         const suggestion = response.data?.suggestion;
         if (suggestion) {
-            setCache(context.cacheKey, suggestion);
+            if (!DEBUG_DISABLE_SESSION_CACHE) {
+                setCache(context.cacheKey, suggestion);
+            }
             logInfo("ApiService", "DATA FLOW STEP 1: Backend response received by Extension logic", {
                 latencyMs: Date.now() - startedAt,
                 suggestionPreview: suggestion.slice(0, 50) + "..."
@@ -113,6 +134,10 @@ export async function fetchSuggestion(
                 message: err.message
             });
         }
+
+        vscode.window.showErrorMessage(
+            `AzureAI backend unreachable at ${targetUrl}. ${err?.message ?? "Unknown error"}`
+        );
 
         if (FALLBACK_TO_MOCK_ON_BACKEND_ERROR) {
             logWarn("ApiService", "BACKEND UNAVAILABLE: Using mock fallback suggestion", {

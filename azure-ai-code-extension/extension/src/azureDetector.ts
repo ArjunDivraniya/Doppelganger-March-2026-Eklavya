@@ -22,7 +22,24 @@ export const AZURE_SDK_MAP: Record<string, string> = {
     "Microsoft.Azure.EventHubs": "event-hubs"
 };
 
-const AZURE_KEYWORDS = /azure|blob|cosmos|keyvault|secret|storage|servicebus|eventhub|credential|client|bus|identity|vault|table|queue|auth/i;
+const AZURE_KEYWORDS = [
+    "azure",
+    "blob",
+    "cosmos",
+    "keyvault",
+    "secret",
+    "storage",
+    "servicebus",
+    "eventhub",
+    "credential",
+    "client",
+    "bus",
+    "identity",
+    "vault",
+    "table",
+    "queue",
+    "auth"
+];
 
 const AZURE_FILE_NAME = /azure[-.]|\.azure\.|azure-config|azureservice/;
 
@@ -57,7 +74,11 @@ export function detectAzure(
     currentLine: string,
     fileName: string
 ): DetectionResult {
-    // FORCE ACTIVATION MODE: only enabled by a top-of-file debug marker
+    const lowerCurrentLine = currentLine.toLowerCase();
+    const lowerFullText = fullText.toLowerCase();
+    const lowerFileName = fileName.toLowerCase();
+
+    // Force activation mode: enabled by a top-of-file debug marker.
     const firstLines = fullText.split("\n").slice(0, 10).join("\n");
     const forceActivationMode = firstLines.includes(FORCE_ACTIVATION_MARKER);
 
@@ -78,25 +99,34 @@ export function detectAzure(
             .filter((service): service is string => !!service)
     ));
 
-    // d) keywordMatch
-    const keywordMatch = AZURE_KEYWORDS.test(currentLine) || AZURE_KEYWORDS.test(fullText.slice(0, 500));
+    // Keyword-first detection, case-insensitive on current line and full text.
+    const keywordHitsCurrentLine = AZURE_KEYWORDS.filter(keyword => lowerCurrentLine.includes(keyword));
+    const keywordHitsFullText = AZURE_KEYWORDS.filter(keyword => lowerFullText.includes(keyword));
+    const keywordMatch = keywordHitsCurrentLine.length > 0 || keywordHitsFullText.length > 0;
+
+    // Force trigger for JS/TS files even before imports are added.
+    const isJsOrTsFile = /\.(ts|tsx|js|jsx)$/.test(lowerFileName);
+    const forcedWords = ["blob", "cosmos", "client", "storage", "secret", "vault"];
+    const forceTrigger = isJsOrTsFile && forcedWords.some(word => lowerCurrentLine.includes(word));
 
     // e) fileMatch
-    const fileMatch = AZURE_FILE_NAME.test(fileName);
+    const fileMatch = AZURE_FILE_NAME.test(lowerFileName);
 
-    // f) isAzure (force activation mode bypasses all checks)
-    const isAzure = forceActivationMode || detectedServices.length > 0 || keywordMatch || fileMatch;
+    // Imports are no longer required to activate Azure pipeline.
+    const isAzure = forceActivationMode || forceTrigger || detectedServices.length > 0 || keywordMatch || fileMatch;
 
-    // If isAzure is true but no services detected via imports, try mapping from keywords
+
+    // If Azure context is detected but imports are missing, derive services from keywords.
     if (isAzure && detectedServices.length === 0) {
         for (const [kw, service] of Object.entries(KEYWORD_SERVICE_MAP)) {
-            if (currentLine.toLowerCase().includes(kw.toLowerCase())) {
+            if (lowerCurrentLine.includes(kw.toLowerCase()) || lowerFullText.includes(kw.toLowerCase())) {
                 detectedServices.push(service);
             }
         }
-        // Fallback to a broad Azure identity suggestion when no service keyword exists.
+
+        // Keep payload non-empty when any Azure keyword exists.
         if (detectedServices.length === 0) {
-            detectedServices.push("azure-identity");
+            detectedServices.push("generic-azure");
         }
     }
 

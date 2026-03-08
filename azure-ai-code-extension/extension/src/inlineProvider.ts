@@ -21,6 +21,7 @@ export class InlineSuggestionProvider implements vscode.InlineCompletionItemProv
         context: vscode.InlineCompletionContext,
         token: vscode.CancellationToken
     ): Promise<vscode.InlineCompletionList | vscode.InlineCompletionItem[] | undefined> {
+        console.log("[DEBUG] Pipeline Started");
         logInfo("InlineProvider", "Completion requested", {
             language: document.languageId,
             position: `${position.line}:${position.character}`,
@@ -70,9 +71,9 @@ export class InlineSuggestionProvider implements vscode.InlineCompletionItemProv
                 return undefined;
             }
 
-            // 5. Create Inline Completion Item
-            // Don't provide a range - just insert the suggestion text at cursor position
-            const item = new vscode.InlineCompletionItem(suggestion);
+            // 5. Create inline completion item at the exact cursor location.
+            const insertionRange = new vscode.Range(position, position);
+            const item = new vscode.InlineCompletionItem(suggestion, insertionRange);
 
             // Optional: Provide a command to log "acceptance"
             item.command = {

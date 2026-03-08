@@ -15,3 +15,4 @@ VS Code extension that detects Azure SDK usage and provides AI-powered code sugg
 1. Run `.\scripts\install-all.ps1` to install dependencies.
 2. Configure `.env` files in `root` and `backend/`.
 3. Run `.\scripts\start-dev.ps1` to start development servers.
+4. In VS Code settings, enable `editor.inlineSuggest.enabled` to see ghost text suggestions.

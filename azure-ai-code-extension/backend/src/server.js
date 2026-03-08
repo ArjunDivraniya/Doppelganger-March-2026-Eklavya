@@ -5,17 +5,15 @@ require("dotenv").config();
 const suggestRoutes = require('./routes/suggest');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3005;
 
 // ── Middleware ──────────────────────────────────────────
-app.use(cors());
-app.use(express.json());
-
-// Request logger
-app.use((req, _res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+app.use((req, res, next) => {
+    console.log(`>>> Incoming ${req.method} request to ${req.url}`);
     next();
 });
+app.use(cors()); // Allow all origins during development
+app.use(express.json());
 
 // ── Routes ─────────────────────────────────────────────
 app.get('/health', (_req, res) => {

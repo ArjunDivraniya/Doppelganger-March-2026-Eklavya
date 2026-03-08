@@ -19,14 +19,14 @@ const SDK_MAP = {
 
 // Intent keywords → intent label
 const INTENT_PATTERNS = [
-    { patterns: ['BlobServiceClient', 'CosmosClient', 'SecretClient', 'ServiceBusClient', 'new ', 'create', 'fromConnectionString'], intent: 'create-client' },
-    { patterns: ['upload', 'uploadBlob', 'uploadData', 'uploadStream'], intent: 'upload' },
-    { patterns: ['download', 'downloadToBuffer', 'downloadToFile'], intent: 'download' },
-    { patterns: ['listBlobs', 'listContainers', 'list', 'iterate'], intent: 'list' },
-    { patterns: ['delete', 'deleteBlob', 'deleteContainer', 'deleteItem'], intent: 'delete' },
-    { patterns: ['query', 'queryItems', 'fetchAll', 'readAll'], intent: 'query' },
-    { patterns: ['container', 'getContainerClient', 'createContainer', 'database'], intent: 'container-setup' },
-    { patterns: ['credential', 'DefaultAzureCredential', 'ClientSecretCredential'], intent: 'authentication' },
+    { patterns: ['BlobServiceClient', 'CosmosClient', 'SecretClient', 'ServiceBusClient', 'new ', 'create', 'fromConnectionString', 'connect', 'initialize', 'setup'], intent: 'create-client' },
+    { patterns: ['upload', 'uploadBlob', 'uploadData', 'uploadStream', 'put', 'send', 'write'], intent: 'upload' },
+    { patterns: ['download', 'downloadToBuffer', 'downloadToFile', 'get', 'receive', 'read', 'fetch'], intent: 'download' },
+    { patterns: ['listBlobs', 'listContainers', 'list', 'iterate', 'find'], intent: 'list' },
+    { patterns: ['delete', 'deleteBlob', 'deleteContainer', 'deleteItem', 'remove'], intent: 'delete' },
+    { patterns: ['query', 'queryItems', 'fetchAll', 'readAll', 'search'], intent: 'query' },
+    { patterns: ['container', 'getContainerClient', 'createContainer', 'database', 'table', 'queue'], intent: 'container-setup' },
+    { patterns: ['credential', 'DefaultAzureCredential', 'ClientSecretCredential', 'auth', 'login'], intent: 'authentication' },
 ];
 
 /**
@@ -35,7 +35,7 @@ const INTENT_PATTERNS = [
  * @returns {{ sdkType: string, intent: string, codeLocation: string }}
  */
 exports.analyze = ({ imports = [], currentLine = '', context = '' }) => {
-    const sdkType = detectSdk(imports, context);
+    const sdkType = detectSdk(imports, context, currentLine);
     const intent = detectIntent(currentLine, context);
     const codeLocation = detectCodeLocation(currentLine);
 
@@ -44,8 +44,8 @@ exports.analyze = ({ imports = [], currentLine = '', context = '' }) => {
 
 // ── Internal helpers ───────────────────────────────────
 
-function detectSdk(imports, context) {
-    const combined = [...imports, context].join(' ');
+function detectSdk(imports, context, currentLine) {
+    const combined = [...imports, context, currentLine].join(' ');
     for (const [pkg, name] of Object.entries(SDK_MAP)) {
         if (combined.includes(pkg)) return name;
     }

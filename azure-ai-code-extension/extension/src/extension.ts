@@ -11,7 +11,7 @@ import { fetchSuggestion } from "./apiService";
 
 const BACKEND_URL = (process.env.BACKEND_URL && process.env.BACKEND_URL.trim() !== "")
     ? process.env.BACKEND_URL
-    : "http://localhost:3005";
+    : "http://127.0.0.1:3005";
 
 let webviewPanel: vscode.WebviewPanel | undefined;
 let watcher: CodeWatcher;
