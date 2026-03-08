@@ -9,7 +9,7 @@ const STEPS = [
     shortDescription: "Start typing Azure SDK imports or method calls.",
     longDescription:
       "As you work in your editor, the extension monitors your code for specific triggers, such as importing an Azure SDK library or calling a known Azure method. This process is lightweight and runs entirely in the background.",
-    image: "/assets/overview-typing.png",
+    image: "/image.png",
     color: "blue",
   },
   {
@@ -18,7 +18,7 @@ const STEPS = [
     shortDescription: "The extension identifies Azure-related patterns.",
     longDescription:
       "Using a combination of keyword matching and pattern recognition, the extension identifies the specific Azure service you're interacting with (e.g., Blob Storage, Cosmos DB). It analyzes the surrounding code to build a rich context for the AI.",
-    image: "/assets/overview-suggestion.png",
+    image: "/image.png",
     color: "cyan",
   },
   {
@@ -27,7 +27,7 @@ const STEPS = [
     shortDescription: "Azure OpenAI returns a relevant code snippet.",
     longDescription:
       "The collected context is sent to a specialized Azure OpenAI model. Our RAG pipeline enhances this process by injecting relevant, up-to-date documentation, ensuring the generated code is accurate and follows best practices.",
-    image: "/assets/feature-suggestion.png",
+    image: "/image.png",
     color: "purple",
   },
   {
@@ -36,7 +36,7 @@ const STEPS = [
     shortDescription: "Press TAB to accept the inline suggestion.",
     longDescription:
       "The generated code appears as ghost text right at your cursor. You can accept it with a single keystroke (Tab) to instantly integrate it, or simply keep typing to ignore it. It's a seamless, non-intrusive workflow.",
-    image: "/assets/overview-accept.png",
+    image: "/image.png",
     color: "green",
   },
 ];

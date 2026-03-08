@@ -81,11 +81,11 @@ export default function DemoSection() {
       >
         <h2 className="text-3xl sm:text-4xl font-bold text-white">
           See It{" "}
-          <span className="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
             In Action
           </span>
         </h2>
-        <p className="mt-4 text-gray-400 max-w-xl mx-auto">
+        <p className="mt-4 text-gray-400 max-w-2xl mx-auto">
           Watch how inline suggestions appear as you type Azure SDK code.
         </p>
       </motion.div>

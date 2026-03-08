@@ -6,7 +6,7 @@ const OVERVIEW_STEPS = [
     title: "1. Install from VS Code Marketplace",
     description:
       "Open VS Code, go to the Extensions view, search for 'Azure AI Assist', and click Install. Reload the editor to activate it.",
-    image: "/assets/overview-install.png",
+    image: "/image.png",
     details: [
       "Quick and easy one-click installation.",
       "Seamlessly integrates into your existing VS Code setup.",
@@ -17,7 +17,7 @@ const OVERVIEW_STEPS = [
     title: "2. Start Typing Azure SDK Code",
     description:
       "The extension automatically detects when you're working with Azure services. Just start typing code related to Blob Storage, Cosmos DB, etc.",
-    image: "/assets/overview-typing.png",
+    image: "/image.png",
     details: [
       "Context-aware detection of Azure SDKs and services.",
       "No special commands needed — it works in the background.",
@@ -28,7 +28,7 @@ const OVERVIEW_STEPS = [
     title: "3. Get Intelligent Inline Suggestions",
     description:
       "As you type, the AI assistant provides relevant code suggestions as ghost text, right at your cursor, just like GitHub Copilot.",
-    image: "/assets/overview-suggestion.png",
+    image: "/image.png",
     details: [
       "Real-time suggestions powered by Azure OpenAI.",
       "RAG-enhanced for higher accuracy and relevance.",
@@ -39,7 +39,7 @@ const OVERVIEW_STEPS = [
     title: "4. Accept with a Single Keystroke",
     description:
       "Happy with the suggestion? Simply press the TAB key to instantly accept and insert the code into your file.",
-    image: "/assets/overview-accept.png",
+    image: "/image.png",
     details: [
       "Frictionless workflow — no need to leave your keyboard.",
       "Intelligently formats and indents the inserted code.",
@@ -85,7 +85,7 @@ export default function OverviewSection() {
               {OVERVIEW_STEPS.map((step, index) => (
                 <div
                   key={index}
-                  onClick={() => setActiveStep(index)}
+                  onMouseEnter={() => setActiveStep(index)}
                   className={`p-6 rounded-xl border transition-all duration-300 cursor-pointer ${
                     activeStep === index
                       ? "bg-blue-500/10 border-blue-500/40 shadow-lg shadow-blue-500/10"

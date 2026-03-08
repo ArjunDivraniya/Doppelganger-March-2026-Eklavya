@@ -43,11 +43,11 @@ export default function FeedbackSection() {
       >
         <h2 className="text-3xl sm:text-4xl font-bold text-white">
           User{" "}
-          <span className="bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
             Feedback
           </span>
         </h2>
-        <p className="mt-4 text-gray-400 max-w-xl mx-auto">
+        <p className="mt-4 text-gray-400 max-w-2xl mx-auto">
           After every inline suggestion, users can rate and review — helping the AI get smarter.
         </p>
       </motion.div>

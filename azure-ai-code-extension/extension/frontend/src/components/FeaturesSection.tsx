@@ -11,7 +11,7 @@ const FEATURES = [
       "Accept suggestions with a single keystroke.",
       "Powered by Azure OpenAI for relevance and accuracy.",
     ],
-    image: "/assets/feature-suggestion.png",
+    image: "/image.png",
     gradient: "from-blue-500 to-cyan-500",
   },
   {
@@ -23,7 +23,7 @@ const FEATURES = [
       "Recognizes Azure-specific keywords and file patterns.",
       "Uses RAG to ground suggestions in your project's context.",
     ],
-    image: "/assets/feature-context.png",
+    image: "/image.png",
     gradient: "from-cyan-500 to-teal-500",
   },
   {
@@ -35,7 +35,7 @@ const FEATURES = [
       "Provides suggestions based on up-to-date documentation.",
       "Improves relevance for complex or niche Azure services.",
     ],
-    image: "/assets/feature-rag.png",
+    image: "/image.png",
     gradient: "from-purple-500 to-blue-500",
   },
 ];
