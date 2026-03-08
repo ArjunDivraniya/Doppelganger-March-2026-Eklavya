@@ -6,7 +6,7 @@ import * as vscode from "vscode";
 import { CodeContext } from "./contextBuilder";
 import { getMockSuggestion } from "./mockData";
 import { logError, logInfo, logWarn } from "./logger";
-import { config } from "./config";
+import { config, DEFAULT_BACKEND_URL } from "./config";
 
 const sessionCache = new Map<string, string>();
 
@@ -101,7 +101,7 @@ function normalizeBackendBaseUrl(rawUrl: string): string {
     const trimmed = rawUrl.trim().replace(/\/+$/, "");
 
     if (!/^https?:\/\//i.test(trimmed)) {
-        return "https://azure-ai-code-backend.onrender.com";
+        return DEFAULT_BACKEND_URL;
     }
 
     return trimmed;
