@@ -1,7 +1,132 @@
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
 
 const TYPEWRITER_TEXT = "Get intelligent Azure SDK code suggestions directly inside your editor.";
+
+/* ── Official Azure "A" logo (matches the real Microsoft Azure icon) ── */
+const AzureLogo = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 150 150" className={className} xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="azA1" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#0078d4" />
+        <stop offset="100%" stopColor="#005ba1" />
+      </linearGradient>
+      <linearGradient id="azA2" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#50e6ff" />
+        <stop offset="50%" stopColor="#32bedd" />
+        <stop offset="100%" stopColor="#198ab3" />
+      </linearGradient>
+      <linearGradient id="azA3" x1="0%" y1="100%" x2="100%" y2="0%">
+        <stop offset="0%" stopColor="#0078d4" />
+        <stop offset="100%" stopColor="#005ba1" />
+      </linearGradient>
+    </defs>
+    {/* Left leg of "A" */}
+    <path d="M25 130 L60 15 L80 15 L52 130 Z" fill="url(#azA1)" />
+    {/* Right leg of "A" */}
+    <path d="M70 15 L90 15 L125 130 L98 130 Z" fill="url(#azA2)" />
+    {/* Crossbar */}
+    <path d="M45 85 L105 85 L100 105 L50 105 Z" fill="url(#azA3)" />
+  </svg>
+);
+
+/* ── Official VS Code logo (matches the real Visual Studio Code icon) ── */
+const VSCodeLogo = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 256 256" className={className} xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="vsA" x1="50%" y1="0%" x2="50%" y2="100%">
+        <stop offset="0%" stopColor="#32b5f1" />
+        <stop offset="100%" stopColor="#2b9fed" />
+      </linearGradient>
+      <linearGradient id="vsB" x1="50%" y1="0%" x2="50%" y2="100%">
+        <stop offset="0%" stopColor="#0078d4" />
+        <stop offset="100%" stopColor="#0065bf" />
+      </linearGradient>
+    </defs>
+    {/* Right panel */}
+    <path d="M180.1 28.1L227.2 50.2V205.8L180.1 228L180.1 28.1Z" fill="url(#vsA)" />
+    {/* Main body */}
+    <path d="M180.1 28.1L104.1 100.2 52.5 59.8 28.8 69.9V186.1L52.5 196.2 104.1 155.8 180.1 228" fill="url(#vsB)" />
+    {/* Inner left triangle */}
+    <path d="M28.8 69.9V186.1L52.5 196.2V59.8L28.8 69.9Z" fill="#1a5fb4" opacity="0.8" />
+    {/* Inner triangles for depth */}
+    <path d="M180.1 28.1L104.1 100.2 52.5 59.8 180.1 28.1Z" fill="#32b5f1" opacity="0.3" />
+    <path d="M180.1 228L104.1 155.8 52.5 196.2 180.1 228Z" fill="#0065bf" opacity="0.3" />
+    {/* Centre left arrow shapes */}
+    <path d="M71.9 161.5V94.5L121.6 128L71.9 161.5Z" fill="white" opacity="0.2" />
+    <path d="M180.1 191.1L121 128L180.1 64.9V191.1Z" fill="white" opacity="0.15" />
+  </svg>
+);
+
+/* Config for floating logos */
+const FLOATING_LOGOS: {
+  Logo: typeof AzureLogo;
+  name: string;
+  x: string; y: string; size: string;
+  delay: number; dur: number; rotate: number;
+}[] = [
+  { Logo: AzureLogo,  name: "Azure",   x: "6%",  y: "14%", size: "w-28 h-28", delay: 0,   dur: 18, rotate: 8   },
+  { Logo: VSCodeLogo, name: "VS Code", x: "83%", y: "10%", size: "w-24 h-24", delay: 2,   dur: 22, rotate: -6  },
+  { Logo: AzureLogo,  name: "Azure",   x: "86%", y: "62%", size: "w-32 h-32", delay: 1,   dur: 20, rotate: 5   },
+  { Logo: VSCodeLogo, name: "VS Code", x: "4%",  y: "68%", size: "w-22 h-22", delay: 3,   dur: 16, rotate: -8  },
+  { Logo: AzureLogo,  name: "Azure",   x: "44%", y: "82%", size: "w-20 h-20", delay: 4,   dur: 24, rotate: 4   },
+  { Logo: VSCodeLogo, name: "VS Code", x: "28%", y: "6%",  size: "w-18 h-18", delay: 1.5, dur: 20, rotate: -5  },
+  { Logo: AzureLogo,  name: "Azure",   x: "66%", y: "84%", size: "w-18 h-18", delay: 2.5, dur: 19, rotate: 6   },
+  { Logo: VSCodeLogo, name: "VS Code", x: "62%", y: "4%",  size: "w-16 h-16", delay: 0.5, dur: 17, rotate: -7  },
+];
+
+/* ── Hoverable floating logo wrapper ── */
+function FloatingLogo({ item, index }: { item: typeof FLOATING_LOGOS[0]; index: number }) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <motion.div
+      key={index}
+      className="absolute pointer-events-auto cursor-pointer group"
+      style={{ left: item.x, top: item.y }}
+      initial={{ opacity: 0, scale: 0.7, rotate: 0 }}
+      animate={{
+        opacity: [0.1, 0.18, 0.12, 0.18, 0.1],
+        scale: [0.9, 1, 0.95, 1, 0.9],
+        y: [0, -14, 0, 14, 0],
+        rotate: [0, item.rotate, 0, -item.rotate, 0],
+      }}
+      transition={{
+        duration: item.dur,
+        delay: item.delay,
+        repeat: Infinity,
+        ease: "easeInOut",
+      }}
+      whileHover={{
+        opacity: 0.7,
+        scale: 1.3,
+        rotate: 0,
+        filter: "drop-shadow(0 0 20px rgba(59,130,246,0.7)) drop-shadow(0 0 50px rgba(59,130,246,0.35))",
+        transition: { duration: 0.3, ease: "easeOut" },
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <item.Logo className={`${item.size} transition-all duration-300`} />
+      {/* Name label on hover */}
+      <AnimatePresence>
+        {hovered && (
+          <motion.div
+            initial={{ opacity: 0, y: 6, scale: 0.85 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.9 }}
+            transition={{ duration: 0.2 }}
+            className="absolute left-1/2 -translate-x-1/2 -bottom-7 whitespace-nowrap px-2.5 py-1 rounded-md bg-gray-900/90 border border-blue-500/30 backdrop-blur-sm"
+          >
+            <span className="text-[11px] font-semibold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+              {item.name}
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
 
 export default function HeroSection() {
   const [displayed, setDisplayed] = useState("");
@@ -41,6 +166,11 @@ export default function HeroSection() {
           animate={{ scale: [1.1, 1, 1.1], opacity: [0.2, 0.4, 0.2] }}
           transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
         />
+
+        {/* ── Floating Azure & VS Code logos ── */}
+        {FLOATING_LOGOS.map((item, i) => (
+          <FloatingLogo key={i} item={item} index={i} />
+        ))}
       </div>
 
       <motion.div
