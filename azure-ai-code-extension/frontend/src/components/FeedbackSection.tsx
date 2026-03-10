@@ -6,7 +6,7 @@ const STAR_COUNT = 5;
 // Mock reviews to show as examples
 const MOCK_REVIEWS = [
   { name: "Aarav S.", rating: 5, text: "Blob Storage code was suggested perfectly — saved me 10 mins!", time: "2 min ago" },
-  { name: "Priya M.", rating: 4, text: "Cosmos DB suggestion was accurate. Minor formatting fix needed.", time: "5 min ago" },
+  { name: "Atul M.", rating: 4, text: "Cosmos DB suggestion was accurate. Minor formatting fix needed.", time: "5 min ago" },
   { name: "Dev P.", rating: 5, text: "Key Vault integration suggested in one shot. Amazing!", time: "12 min ago" },
 ];
 
